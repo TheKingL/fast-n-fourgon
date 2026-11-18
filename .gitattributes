@@ -1,3 +1,8 @@
-# Notebooks : nettoyés au commit (nbstripout), diff texte propre (nbstripout), merge par cellule (nbdime)
+# Notebooks : nettoyés au commit (nbstripout) + diff texte propre (nbstripout)
+# (lignes au format exact attendu par `nbstripout --install`, sinon il les rajoute à chaque install)
+*.ipynb filter=nbstripout
+*.zpln filter=nbstripout
+*.ipynb diff=ipynb
+# Merge cellule par cellule (nbdime)
 # eol=lf : fins de ligne identiques dans le dépôt quel que soit l'OS (sinon Windows commit en CRLF et tout le fichier apparaît modifié chez les autres)
-*.ipynb filter=nbstripout diff=ipynb merge=jupyternotebook text eol=lf
+*.ipynb merge=jupyternotebook text eol=lf
