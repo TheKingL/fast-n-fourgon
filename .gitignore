@@ -224,3 +224,7 @@ __marimo__/
 
 # MacOs
 .DS_Store
+
+
+# remove test notebook
+test.ipynb
