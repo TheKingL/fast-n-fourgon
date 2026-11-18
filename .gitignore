@@ -225,6 +225,8 @@ __marimo__/
 # MacOs
 .DS_Store
 
-
 # remove test notebook
 test.ipynb
+
+# temp pptx file
+~$Presentation_cours_projet_consolidation_livraisons.pptx

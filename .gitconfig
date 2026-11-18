@@ -1,0 +1,20 @@
+# Config git partagée du projet. À activer une fois par personne :
+#   pip install -r requirements.txt
+#   nbstripout --install --attributes .gitattributes
+#   git config include.path ../.gitconfig
+# Les commandes git-nb* viennent du venv : lancer git pull/merge avec le venv activé.
+
+# nbstripout : métadonnées supplémentaires retirées au commit
+[filter "nbstripout"]
+	extrakeys = metadata.kernelspec metadata.language_info metadata.colab metadata.vscode cell.metadata.colab cell.metadata.id cell.metadata.outputId cell.metadata.executionInfo
+
+# nbdime : merge des notebooks cellule par cellule
+[merge "jupyternotebook"]
+	name = jupyter notebook merge driver
+	driver = git-nbmergedriver merge %O %A %B %L %P
+
+# nbdime : outils visuels (git difftool --tool=nbdime / git mergetool --tool=nbdime)
+[difftool "nbdime"]
+	cmd = git-nbdifftool diff \"$LOCAL\" \"$REMOTE\" \"$BASE\"
+[mergetool "nbdime"]
+	cmd = git-nbmergetool merge \"$BASE\" \"$LOCAL\" \"$REMOTE\" \"$MERGED\"

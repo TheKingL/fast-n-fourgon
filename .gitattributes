@@ -1,0 +1,2 @@
+# Notebooks : nettoyés au commit (nbstripout), diff texte propre (nbstripout), merge par cellule (nbdime)
+*.ipynb filter=nbstripout diff=ipynb merge=jupyternotebook
