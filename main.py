@@ -6,11 +6,13 @@ Reprend l'algorithme de data_analysis/milestone3.ipynb, sans les graphiques ni l
   3. lissage : changements de profil au moindre surcoût jusqu'à ce que les semaines soient dans la tolérance ;
   4. report des lignes sur le jour fixe suivant, puis planning final.
 
-Sorties :
-  - tableau des économies (baseline vs chaque étape du moteur) affiché dans la console et écrit dans data/gold/bilan.csv ;
-  - data/gold/sortie1_profils.csv, sortie2_camions.csv et planning_camions.csv (mêmes fichiers que le notebook).
+Sorties (mêmes fichiers que le notebook, écrits dans data/gold/) :
+  - sortie 1, sortie1_profils.csv : le profil à appliquer pour chaque couple (aperçu dans la console) ;
+  - sortie 2, sortie2_camions.csv : les materials regroupés dans chaque camion (détail d'un camion dans la console) ;
+  - bilan.csv : tableau des économies (baseline vs chaque étape du moteur), aussi affiché dans la console.
 
-Lancement : python main.py
+Lancement : python main.py            (détaille le camion qui regroupe le plus de lignes de besoin)
+            python main.py <camion>   (détaille le camion choisi, par exemple python main.py 254)
 """
 import itertools
 import sys
@@ -19,7 +21,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stdout, "reconfigure"):          # console Windows ; absent dans un notebook
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # ---------- Fichiers ----------
 DATA = Path(__file__).resolve().parent / "data"
@@ -50,6 +53,7 @@ distances = pd.read_csv(DISTANCES_PATH, encoding="utf-8-sig").set_index("supplie
 # Données manquantes : estimations hautes (comme dans la baseline du milestone 2)
 DISTANCE_PAR_DEFAUT = TRANCHES_KM[-1] + 1  # 651 km -> tranche "> 650 km"
 POIDS_PAR_DEFAUT = TRANCHES_KG[-1] + 1     # 4 001 kg -> tranche "> 4 000 kg"
+SANS_DISTANCE = sorted(distances.index[distances.isna()])
 distances = distances.fillna(DISTANCE_PAR_DEFAUT)
 
 
@@ -595,49 +599,149 @@ par_usine["economie_pct"] = par_usine["economie"] / par_usine["cout_baseline"]
 
 
 # =====================================================================================================
-# Export
+# Sortie 1 : le profil à appliquer pour chaque couple
 # =====================================================================================================
-sortie1 = (planning.groupby(["plant", "supplier_id", "jours_fixes"])
-           .agg(nb_jours_fixes=("profil", lambda p: len(p.iloc[0])), camions=("camion_id", "size"),
-                camions_demarrage=("demarrage", "sum"), poids_total=("poids", "sum"), cout=("cout", "sum"))
-           .reset_index().round({"poids_total": 2, "cout": 2}))
-sortie2 = (lignes_complet[["id_ligne", "camion_id", "plant", "supplier_id", "material", "unloading_point", "need_date",
-                           "date_livraison", "avance_jours", "schedule_quantity", "weight", "volume", "reserve"]]
-           .sort_values(["camion_id", "need_date"]))
-planning_export = planning_complet[["camion_id", "plant", "supplier_id", "jours_fixes", "date", "jour", "semaine",
-                                    "demarrage", "reserve", "nb_lignes", "poids", "volume", "cout"]]
+distance_brute = distances.where(~distances.index.isin(SANS_DISTANCE))   # NaN = distance inconnue
 
-assert sortie1[["plant", "supplier_id"]].duplicated().sum() == 0      # un profil par couple
-assert len(sortie2) == len(IDS_ATTENDUS)                               # toutes les lignes
-SORTIE.mkdir(parents=True, exist_ok=True)
-fichiers = {"sortie1_profils.csv": sortie1, "sortie2_camions.csv": sortie2, "planning_camions.csv": planning_export,
-            "bilan.csv": bilan.round({"Coût": 2, "Économie vs baseline": 2, "Économie (%)": 4, "Avance moyenne (j)": 2})}
-for nom_fichier, table in fichiers.items():
-    table.to_csv(SORTIE / nom_fichier, index=False)
+
+def moyennes_par_semaine(camions):
+    # Par couple, sur les semaines où il est livré : jours de livraison et camions par semaine (moyennes)
+    par_sem = camions.assign(semaine=camions["date"].dt.isocalendar().week).groupby(["plant", "supplier_id", "semaine"])
+    jours = par_sem["date"].nunique().groupby(["plant", "supplier_id"]).mean()
+    nb_camions = par_sem.size().groupby(["plant", "supplier_id"]).mean()
+    return jours, nb_camions
+
+
+livraisons_actuelles, _ = moyennes_par_semaine(camions_base)
+_, camions_semaine = moyennes_par_semaine(planning)
+par_couple = planning.groupby(["plant", "supplier_id"])
+sortie1 = pd.DataFrame({
+    "frequence_cible": par_couple["profil"].first().map(len),
+    "jours": par_couple["jours_fixes"].first(),
+    "camions_semaine": camions_semaine.round(2),
+    "remplissage_poids": (par_couple["poids"].mean() / POIDS_MAX).round(4),
+}).reset_index()
+sortie1.insert(2, "distance_km", sortie1["supplier_id"].map(distance_brute))
+sortie1.insert(3, "livraisons_semaine_actuelles",
+               [round(livraisons_actuelles.get((p, s), 0), 2) for p, s in zip(sortie1["plant"], sortie1["supplier_id"])])
+sortie1 = sortie1.rename(columns={"supplier_id": "fournisseur", "plant": "usine"})[
+    ["fournisseur", "usine", "distance_km", "livraisons_semaine_actuelles", "frequence_cible", "jours",
+     "camions_semaine", "remplissage_poids"]].sort_values(["usine", "fournisseur"]).reset_index(drop=True)
+assert sortie1[["fournisseur", "usine"]].duplicated().sum() == 0      # un profil par couple
+assert len(sortie1) == besoins.groupby(["plant", "supplier_id"]).ngroups
 
 
 # =====================================================================================================
-# Affichage
+# Sortie 2 : les materials regroupés dans chaque camion
 # =====================================================================================================
-print(f"Besoins à consolider : {len(besoins)} lignes, {besoins.groupby(['plant', 'supplier_id']).ngroups} couples, "
-      f"{len(USINES)} usines, du {DEBUT:%d/%m} au {FIN:%d/%m}")
-print(f"Camions réservés (lignes sans poids) : {NB_RESERVE}, {eur(COUT_RESERVE)}")
-print(f"Variante retenue : {PRINCIPALE} ({len(journaux[PRINCIPALE])} changements de profil au lissage)")
-print(f"Report : {journal_report['lignes_reportees'].sum()} lignes reportées sur le jour fixe suivant, "
-      f"gain {eur(journal_report['gain'].sum())}")
+sortie2 = (lignes_complet
+           .groupby(["camion_id", "plant", "supplier_id", "date_livraison", "material", "unloading_point"])
+           .agg(besoins=("need_date", lambda d: ", ".join(sorted(d.dt.strftime("%Y-%m-%d").unique()))),
+                nb_lignes=("need_date", "size"), quantite=("schedule_quantity", "sum"),
+                poids_kg=("weight", lambda w: w.sum(min_count=1)), reserve=("reserve", "first"))
+           .reset_index()
+           .rename(columns={"plant": "usine", "supplier_id": "fournisseur", "unloading_point": "quai"}))
+sortie2.insert(4, "jour", sortie2["date_livraison"].dt.day_of_week.map(dict(enumerate(JOURS))))
+sortie2["poids_kg"] = sortie2["poids_kg"].round(1)
+sortie2 = sortie2.sort_values(["camion_id", "poids_kg", "material"], ascending=[True, False, True]).reset_index(drop=True)
+assert sortie2["nb_lignes"].sum() == len(IDS_ATTENDUS)                  # toutes les lignes de besoin
+assert sortie2["camion_id"].nunique() == len(planning_complet)          # tous les camions
 
-print("\n=== Contraintes ===")
-print(controle_contraintes.drop(columns="Description").to_string())
+NB_AFFICHES = 10
+MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre",
+        "décembre"]
 
-print("\n=== Économies (camions réservés compris) ===")
-print(bilan.to_string(index=False, na_rep="–", formatters={
-    "Coût": eur, "Économie vs baseline": eur, "Économie (%)": pourcent, "Avance moyenne (j)": nombre}))
 
-print("\n=== Économies par usine ===")
-print(par_usine.to_string(formatters={
-    "camions_baseline": "{:.0f}".format, "camions_final": "{:.0f}".format, "cout_baseline": eur,
-    "cout_final": eur, "economie": eur, "economie_pct": pourcent}))
+def poids_camion(contenu):
+    # Poids total d'un camion et remplissage ; camion réservé : poids inconnu
+    poids = contenu["poids_kg"].sum(min_count=1)
+    if pd.isna(poids):
+        return "poids inconnu (camion réservé)"
+    return f"{nombre(round(poids))} kg (remplissage poids {pourcent(poids / POIDS_MAX)})"
 
-print(f"\nFichiers écrits dans {SORTIE} :")
-for nom_fichier, table in fichiers.items():
-    print(f"  {nom_fichier:<22}: {len(table)} lignes")
+
+def detail_camion(camion_id, nb_affiches=NB_AFFICHES):
+    # Materials d'un camion : les plus lourds, puis "N autres materials" ; retourne (résumé, tableau en texte)
+    contenu = sortie2[sortie2["camion_id"] == camion_id]
+    dates = pd.to_datetime([d for b in contenu["besoins"] for d in b.split(", ")])
+    un_mois = dates.month.nunique() == 1
+
+    def jours_besoin(b):
+        return ", ".join(str(pd.Timestamp(d).day) if un_mois else pd.Timestamp(d).strftime("%d/%m")
+                         for d in b.split(", "))
+
+    table = (contenu.head(nb_affiches)[["material", "quai", "besoins", "quantite", "poids_kg"]]
+             .assign(besoins=lambda t: t["besoins"].map(jours_besoin)).reset_index(drop=True))
+    reste = contenu.iloc[nb_affiches:]
+    if len(reste):
+        table.loc[len(table)] = [f"{len(reste)} autres materials", "", "", reste["quantite"].sum(), reste["poids_kg"].sum()]
+    camion = contenu.iloc[0]
+    resume = (f"Camion n° {camion_id} : {camion['fournisseur']} -> {camion['usine']}, {camion['jour'].lower()} "
+              f"{camion['date_livraison']:%d/%m}, {len(contenu)} materials, "
+              f"{contenu['nb_lignes'].sum()} lignes de besoin, {poids_camion(contenu)}")
+    titre_besoins = f"Besoins regroupés (jours de {MOIS[dates[0].month - 1]})" if un_mois else "Besoins regroupés"
+    table = table.rename(columns={"material": "Material", "quai": "Quai", "besoins": titre_besoins,
+                                  "quantite": "Quantité", "poids_kg": "Poids (kg)"})
+    return resume, table.to_string(index=False, formatters={"Quantité": nombre,
+                                                            "Poids (kg)": lambda p: nombre(round(p))}, na_rep="–")
+
+
+def main():
+    # Export des sorties et affichage : seulement quand le script est lancé (python main.py),
+    # pas quand il est importé (par exemple par les tests du milestone 4)
+    # =====================================================================================================
+    # Export
+    # =====================================================================================================
+    SORTIE.mkdir(parents=True, exist_ok=True)
+    fichiers = {"sortie1_profils.csv": sortie1, "sortie2_camions.csv": sortie2,
+                "bilan.csv": bilan.round({"Coût": 2, "Économie vs baseline": 2, "Économie (%)": 4, "Avance moyenne (j)": 2})}
+    for nom_fichier, table in fichiers.items():
+        table.to_csv(SORTIE / nom_fichier, index=False, date_format="%Y-%m-%d")
+
+
+    # =====================================================================================================
+    # Affichage
+    # =====================================================================================================
+    print(f"Besoins à consolider : {len(besoins)} lignes, {besoins.groupby(['plant', 'supplier_id']).ngroups} couples, "
+          f"{len(USINES)} usines, du {DEBUT:%d/%m} au {FIN:%d/%m}")
+    print(f"Camions réservés (lignes sans poids) : {NB_RESERVE}, {eur(COUT_RESERVE)}")
+    print(f"Variante retenue : {PRINCIPALE} ({len(journaux[PRINCIPALE])} changements de profil au lissage)")
+    print(f"Report : {journal_report['lignes_reportees'].sum()} lignes reportées sur le jour fixe suivant, "
+          f"gain {eur(journal_report['gain'].sum())}")
+
+    print("\n=== Contraintes ===")
+    print(controle_contraintes.drop(columns="Description").to_string())
+
+    print("\n=== Économies (camions réservés compris) ===")
+    print(bilan.to_string(index=False, na_rep="–", formatters={
+        "Coût": eur, "Économie vs baseline": eur, "Économie (%)": pourcent, "Avance moyenne (j)": nombre}))
+
+    print("\n=== Économies par usine ===")
+    print(par_usine.to_string(formatters={
+        "camions_baseline": "{:.0f}".format, "camions_final": "{:.0f}".format, "cout_baseline": eur,
+        "cout_final": eur, "economie": eur, "economie_pct": pourcent}))
+
+    print(f"\n=== Sortie 1 : le profil à appliquer pour chaque couple ({len(sortie1)} couples, aperçu des 10 premiers) ===")
+    print(sortie1.head(10).rename(columns={
+        "fournisseur": "Fournisseur", "usine": "Usine", "distance_km": "Distance",
+        "livraisons_semaine_actuelles": "Livraisons / sem. actuelles", "frequence_cible": "Fréquence cible", "jours": "Jour",
+        "camions_semaine": "Camions / sem.", "remplissage_poids": "Remplissage poids"})
+        .to_string(index=False, formatters={
+            "Distance": lambda d: "inconnue" if pd.isna(d) else f"{d:.0f} km", "Livraisons / sem. actuelles": nombre,
+            "Fréquence cible": "{} / semaine".format, "Camions / sem.": nombre, "Remplissage poids": pourcent}))
+
+    camion_detail = (int(sys.argv[1]) if len(sys.argv) > 1
+                     else int(planning_complet.loc[planning_complet["nb_lignes"].idxmax(), "camion_id"]))
+    assert camion_detail in set(sortie2["camion_id"]), f"camion {camion_detail} inconnu (1 à {sortie2['camion_id'].max()})"
+    resume, table_camion = detail_camion(camion_detail)
+    print(f"\n=== Sortie 2 : les materials regroupés dans chaque camion ({sortie2['camion_id'].nunique()} camions) ===")
+    print(resume)
+    print(table_camion)
+
+    print(f"\nFichiers écrits dans {SORTIE} :")
+    for nom_fichier, table in fichiers.items():
+        print(f"  {nom_fichier:<22}: {len(table)} lignes")
+
+
+if __name__ == "__main__":
+    main()
