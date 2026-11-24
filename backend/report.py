@@ -7,7 +7,7 @@ import pandas as pd
 from .config import JOURS, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion
 from .donnees import besoins, camions_reserves, lignes_reserves
-from .jours_fixes import Scenarios, nom_profil
+from .jours_fixes import Scenarios, nom_profil, profil_utilise
 from .typage import Choix, Profil
 
 
@@ -16,8 +16,6 @@ class CamionEnCours(TypedDict):
 
     date: pd.Timestamp
     """Jour du camion."""
-    demarrage: bool
-    """True pour un camion de démarrage (hors jours fixes, première semaine)."""
     lignes: list[int]
     """Index (dans ``besoins``) des lignes chargées."""
 
@@ -59,14 +57,15 @@ def reporter_lignes(camions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     1. Une ligne dont le besoin est après le jour fixe suivant passe dans le camion de ce jour, s'il a la place.
     2. Deux camions d'un couple le même jour sont fusionnés s'ils tiennent dans un seul.
 
-    Pour chaque couple, le résultat n'est gardé que s'il ne coûte pas plus cher.
+    Pour chaque couple, le résultat n'est gardé que s'il ne coûte pas plus cher et que le couple livre toujours
+    au moins une semaine sur tous ses jours fixes (C11).
 
     Args:
         camions: une ligne par camion (voir ``construire_planning``).
 
     Returns:
         ``(camions après report, journal)`` ; le journal a une ligne par couple (``lignes_reportees``,
-        ``camions_en_moins``, ``gain``, ``report_refuse_car_plus_cher``).
+        ``camions_en_moins``, ``gain``, ``report_refuse_car_plus_cher``, ``report_refuse_profil_incomplet``).
     """
     besoin, poids, volume = besoins["need_date"], besoins["weight"], besoins["volume"]
 
@@ -76,8 +75,7 @@ def reporter_lignes(camions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     def en_cours(groupe: pd.DataFrame) -> list[CamionEnCours]:
         """Camions d'un couple, chacun avec sa propre liste de lignes (modifiable sans toucher au scénario)."""
-        return [CamionEnCours(date=d, demarrage=dem, lignes=list(ls))
-                for d, dem, ls in zip(groupe["date"], groupe["demarrage"], groupe["lignes"])]
+        return [CamionEnCours(date=d, lignes=list(ls)) for d, ls in zip(groupe["date"], groupe["lignes"])]
 
     resultat: list[dict[str, Any]] = []
     journal: list[dict[str, Any]] = []
@@ -94,7 +92,7 @@ def reporter_lignes(camions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         nb_avant, reportees = len(cam), 0
         for c in cam:                                               # 1) report vers le jour fixe suivant
             suivant = prochain_jour_fixe(c["date"], profil)
-            cibles = [u for u in cam if u["date"] == suivant and not u["demarrage"]]
+            cibles = [u for u in cam if u["date"] == suivant]
             for l in sorted((l for l in c["lignes"] if besoin[l] >= suivant), key=lambda l: -poids[l]):
                 for u in cibles:
                     if charge_ok(u["lignes"] + [l]):
@@ -110,13 +108,16 @@ def reporter_lignes(camions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
                     b["lignes"] = []
         apres = [c for c in cam if c["lignes"]]
         cout_apres: float = sum(cout(c["lignes"]) for c in apres)
-        garde = cout_apres <= cout_avant + 0.005
+        moins_cher = cout_apres <= cout_avant + 0.005
+        complet = profil_utilise([c["date"] for c in apres], profil)
+        garde = moins_cher and complet
         if not garde:
             apres = en_cours(groupe)
         journal.append({"plant": plant, "supplier_id": supplier, "lignes_reportees": reportees if garde else 0,
                         "camions_en_moins": nb_avant - len(apres),
                         "gain": round(cout_avant - cout_apres, 2) if garde else 0.0,
-                        "report_refuse_car_plus_cher": not garde and reportees > 0})
+                        "report_refuse_car_plus_cher": not moins_cher and reportees > 0,
+                        "report_refuse_profil_incomplet": moins_cher and not complet})
         resultat += [{**c, "plant": plant, "supplier_id": supplier, "profil": profil} for c in apres]
     return pd.DataFrame(resultat), pd.DataFrame(journal)
 

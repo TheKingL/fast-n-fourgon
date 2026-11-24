@@ -2,10 +2,11 @@
 
 Chaque couple fournisseur × usine est consolidé pour chacun des 25 profils possibles
 (1 jour fixe : 5 profils ; 2 jours fixes : 10 profils ; 3 jours fixes : 10 profils). On garde ensuite, par couple,
-le profil le moins cher parmi ceux qui respectent les jours fixes dès le début du planning (aucun camion de démarrage).
+le profil le moins cher parmi ceux qui sont vraiment utilisés : un couple à 2 ou 3 jours fixes doit livrer
+au moins une semaine sur tous ses jours fixes (C11).
 """
 import itertools
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import NamedTuple
 
 import pandas as pd
@@ -13,7 +14,7 @@ import pandas as pd
 from .charge import charge_depuis_camions
 from .config import FENETRE, JOURS, JOURS_FIXES_MAX, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion
-from .donnees import DEBUT, besoins
+from .donnees import besoins
 from .typage import Charge, Choix, CleScenario, Profil
 
 PROFILS: list[Profil] = [p for n in range(1, JOURS_FIXES_MAX + 1) for p in itertools.combinations(range(5), n)]
@@ -51,22 +52,40 @@ def nom_profil(profil: Profil) -> str:
     return " + ".join(JOURS[j] for j in profil)
 
 
-def date_camion(besoin: pd.Timestamp, profil: Profil) -> tuple[pd.Timestamp, bool]:
+def date_camion(besoin: pd.Timestamp, profil: Profil) -> pd.Timestamp:
     """Choisit le jour de départ du camion qui livre un besoin.
 
-    C'est le dernier jour fixe du profil avant ou égal au besoin. S'il tombe avant le début de l'horizon,
-    le camion partirait le jour du besoin, hors des jours fixes : c'est un camion de démarrage. Un profil qui
-    en crée un n'est jamais retenu (voir ``Scenarios.autorises``).
+    C'est le dernier jour fixe du profil avant ou égal au besoin, toujours à moins de 7 jours du besoin.
+    Pour les premiers besoins, il peut tomber dans la semaine ajoutée avant le planning (à partir du lundi 02/11).
 
     Args:
         besoin: date du besoin.
         profil: jours fixes du couple.
 
     Returns:
-        ``(date du camion, True si c'est un camion de démarrage)``.
+        La date du camion.
     """
-    date = max(besoin - pd.Timedelta(days=(besoin.day_of_week - j) % 7) for j in profil)
-    return (besoin, True) if date < DEBUT else (date, False)
+    return max(besoin - pd.Timedelta(days=(besoin.day_of_week - j) % 7) for j in profil)
+
+
+def profil_utilise(dates: Iterable[pd.Timestamp], profil: Profil) -> bool:
+    """Vérifie qu'un couple livre au moins une semaine sur tous ses jours fixes (C11).
+
+    Un couple au profil « mardi + vendredi » doit avoir au moins une semaine avec un camion le mardi et un camion
+    le vendredi ; sinon il n'utilise jamais vraiment ses 2 jours. Un profil d'un seul jour est toujours utilisé.
+
+    Args:
+        dates: dates des camions du couple.
+        profil: jours fixes du couple.
+
+    Returns:
+        True si une semaine au moins compte un camion sur chacun des jours fixes.
+    """
+    jours_par_semaine: dict[tuple[int, int], set[int]] = {}
+    for d in dates:
+        iso = d.isocalendar()
+        jours_par_semaine.setdefault((iso.year, iso.week), set()).add(d.day_of_week)
+    return any(set(profil) <= jours for jours in jours_par_semaine.values())
 
 
 def consolider_couple(lignes: pd.DataFrame, profil: Profil) -> pd.DataFrame:
@@ -81,12 +100,12 @@ def consolider_couple(lignes: pd.DataFrame, profil: Profil) -> pd.DataFrame:
         profil: jours fixes du couple.
 
     Returns:
-        Une ligne par camion : ``date``, ``demarrage``, ``poids``, ``volume`` et ``lignes`` (index des lignes chargées).
+        Une ligne par camion : ``date``, ``poids``, ``volume`` et ``lignes`` (index des lignes chargées).
     """
     restantes = [Ligne(*l) for l in zip(lignes.index, lignes["need_date"], lignes["weight"], lignes["volume"])]
     camions = []
     while restantes:
-        date, demarrage = date_camion(restantes[0].need_date, profil)
+        date = date_camion(restantes[0].need_date, profil)
         poids, volume, i = 0.0, 0.0, 0
         contenu: list[int] = []
         while i < len(restantes):
@@ -100,7 +119,7 @@ def consolider_couple(lignes: pd.DataFrame, profil: Profil) -> pd.DataFrame:
             contenu.append(ligne.id_besoin)
             restantes.pop(i)
             i = 0
-        camions.append({"date": date, "demarrage": demarrage, "poids": poids, "volume": volume, "lignes": contenu})
+        camions.append({"date": date, "poids": poids, "volume": volume, "lignes": contenu})
     return pd.DataFrame(camions)
 
 
@@ -133,7 +152,7 @@ class Scenarios:
         nb_camions: nombre de camions de chaque scénario.
         charge: charge de l'usine due à chaque scénario.
         max_jour: nombre maximal de camions un même jour pour chaque scénario.
-        demarrage: nombre de camions de démarrage (hors jours fixes) de chaque scénario.
+        utilise: True si le couple livre au moins une semaine sur tous les jours du profil (C11).
     """
 
     def __init__(self) -> None:
@@ -152,14 +171,14 @@ class Scenarios:
             (p, s, prof): charge_depuis_camions(c.assign(plant=p), p) for (p, s, prof), c in self.camions.items()}
         self.max_jour: dict[CleScenario, int] = {
             cle: int(c.groupby("date").size().max()) for cle, c in self.camions.items()}
-        self.demarrage: dict[CleScenario, int] = {cle: int(c["demarrage"].sum()) for cle, c in self.camions.items()}
+        self.utilise: dict[CleScenario, bool] = {
+            (p, s, prof): profil_utilise(c["date"], prof) for (p, s, prof), c in self.camions.items()}
 
     def autorises(self, plant: str, supplier: str, profils_variante: Sequence[Profil]) -> list[Profil]:
-        """Donne les profils autorisés pour un couple : jours fixes dès le début (C8) et 1 camion par jour (C9).
+        """Donne les profils autorisés pour un couple : profil utilisé (C11) et 1 camion par jour (C9).
 
-        Un profil qui crée un camion de démarrage (un besoin du début du planning qui tombe avant le premier
-        jour fixe) est toujours exclu : les camions partent uniquement les jours fixes. Comme l'horizon commence
-        un lundi, le profil « lundi » seul convient toujours, donc il reste au moins un profil.
+        Un profil de 2 ou 3 jours où le couple ne livre jamais sur tous ses jours la même semaine est exclu.
+        Les profils d'un seul jour sont toujours utilisés, donc il reste au moins un profil.
 
         Args:
             plant: code de l'usine.
@@ -167,13 +186,13 @@ class Scenarios:
             profils_variante: profils autorisés par la variante.
 
         Returns:
-            Les profils de la variante sans camion de démarrage qui respectent C9 ; si aucun ne respecte C9
-            (besoin d'un seul jour > 24,5 t), tous les profils de la variante sans camion de démarrage.
+            Les profils utilisés de la variante qui respectent C9 ; si aucun ne respecte C9 (besoin d'un seul
+            jour > 24,5 t), tous les profils utilisés de la variante.
         """
-        sans_demarrage = [p for p in profils_variante if self.demarrage[(plant, supplier, p)] == 0]
-        assert sans_demarrage, f"aucun profil sans camion de démarrage pour {plant} / {supplier}"
-        ok = [p for p in sans_demarrage if self.max_jour[(plant, supplier, p)] <= 1]
-        return ok if ok else sans_demarrage
+        utilises = [p for p in profils_variante if self.utilise[(plant, supplier, p)]]
+        assert utilises, f"aucun profil utilisé pour {plant} / {supplier}"
+        ok = [p for p in utilises if self.max_jour[(plant, supplier, p)] <= 1]
+        return ok if ok else utilises
 
     def choix_moins_cher(self, profils_variante: Sequence[Profil]) -> Choix:
         """Choisit le profil le moins cher de chaque couple parmi les profils autorisés.
@@ -202,3 +221,16 @@ class Scenarios:
             La somme des coûts des scénarios retenus, en €.
         """
         return sum(self.cout[(p, s, prof)] for (p, s), prof in choix.items())
+
+    def camions_en_trop_evitables(self, choix: Choix) -> int:
+        """Compte les couples qui ont 2 camions un même jour alors qu'un autre profil l'éviterait (C9).
+
+        Args:
+            choix: profil retenu pour chaque couple.
+
+        Returns:
+            Le nombre de couples du choix dont le profil met 2 camions un même jour, alors qu'au moins un profil
+            utilisé (C11), parmi tous les ``PROFILS``, n'en met jamais 2.
+        """
+        return sum(self.max_jour[(p, s, prof)] > 1 and self.max_jour[(p, s, self.autorises(p, s, PROFILS)[0])] <= 1
+                   for (p, s), prof in choix.items())

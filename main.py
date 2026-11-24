@@ -2,8 +2,9 @@
 
 Le code du moteur est dans le package ``backend/`` (un module par étape) ; ce fichier enchaîne les étapes :
 
-1. jours fixes : chaque couple fournisseur × usine choisit ses 1 à 3 jours de livraison les moins chers, dès le
-   début du planning (pas de camion hors jours fixes) ;
+1. jours fixes : chaque couple fournisseur × usine choisit ses 1 à 3 jours de livraison les moins chers ; les
+   premiers besoins peuvent partir dans la semaine ajoutée avant le planning, et un couple à 2 ou 3 jours doit
+   livrer au moins une semaine sur tous ses jours ;
 2. contrôle de l'équilibre des usines (C10) ;
 3. lissage : changements de profil au moindre surcoût jusqu'à ce que les semaines soient dans la tolérance ;
 4. report des lignes sur le jour fixe suivant, puis planning final ;
@@ -57,7 +58,10 @@ def executer() -> Resultats:
     journaux: dict[str, pd.DataFrame] = {}
     for nom, profils in VARIANTES.items():
         choix_lisses[nom], journaux[nom] = lisser(scenarios, choix_initiaux[nom], profils)
-    principale = min(VARIANTES, key=lambda nom: scenarios.cout_choix(choix_lisses[nom]))   # la moins chère après lissage
+    # Variante retenue : la moins chère après lissage, parmi celles qui respectent C9 (une variante à 1 jour fixe
+    # peut obliger un gros couple à 2 camions le même jour, alors qu'un 2e jour fixe l'éviterait)
+    admissibles = [nom for nom in VARIANTES if scenarios.camions_en_trop_evitables(choix_lisses[nom]) == 0]
+    principale = min(admissibles, key=lambda nom: scenarios.cout_choix(choix_lisses[nom]))
 
     # ---------- Bloc 4 : report et planning final (planning de chaque étape, pour le bilan) ----------
     plannings: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
@@ -100,7 +104,8 @@ def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]
     """
     besoins = donnees.besoins
     print(f"Besoins à consolider : {len(besoins)} lignes, {besoins.groupby(['plant', 'supplier_id']).ngroups} couples, "
-          f"{len(donnees.USINES)} usines, du {donnees.DEBUT:%d/%m} au {donnees.FIN:%d/%m}")
+          f"{len(donnees.USINES)} usines, du {donnees.DEBUT:%d/%m} au {donnees.FIN:%d/%m} "
+          f"(livraisons possibles dès le {donnees.DEBUT_LIVRAISONS:%d/%m})")
     print(f"Camions réservés (lignes sans poids) : {donnees.NB_RESERVE}, {eur(donnees.COUT_RESERVE)}")
     print(f"Variante retenue : {r.principale} ({len(r.journaux[r.principale])} changements de profil au lissage)")
     print(f"Report : {r.journal_report['lignes_reportees'].sum()} lignes reportées sur le jour fixe suivant, "

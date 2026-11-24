@@ -1,7 +1,8 @@
 # Moteur de consolidation des livraisons
 
 Le moteur regroupe les livraisons de chaque couple fournisseur × usine dans le moins de camions possible :
-1 à 3 jours fixes de livraison par semaine (respectés dès le premier jour du planning), au plus 24,5 t et 110,4 m³ par camion, jamais de retard,
+1 à 3 jours fixes de livraison par semaine (un couple à 2 ou 3 jours livre au moins une semaine sur tous ses jours ;
+les premiers besoins peuvent partir dans la semaine qui précède le planning), au plus 24,5 t et 110,4 m³ par camion, jamais de retard,
 au plus 7 jours d'avance, et une charge équilibrée sur les jours de la semaine pour chaque usine.
 
 ## Installation
@@ -40,7 +41,7 @@ backend/
   couts.py         grille tarifaire, distances, coût d'un camion
   donnees.py       besoins à consolider, camions réservés, baseline, horizon du planning
   charge.py        camions reçus par jour et par usine, tolérance de lissage
-  contraintes.py   vérification des contraintes C1 à C10 et cohérence du planning
+  contraintes.py   vérification des contraintes C1 à C11 et cohérence du planning
   jours_fixes.py   bloc 1 : consolidation de chaque couple pour chaque profil (classe Scenarios)
   lissage.py       blocs 2 et 3 : équilibre des usines et lissage
   report.py        bloc 4 : report sur le jour fixe suivant, planning final

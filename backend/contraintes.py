@@ -1,4 +1,4 @@
-"""Vérification des contraintes C1 à C10 et cohérence du planning final.
+"""Vérification des contraintes C1 à C11 et cohérence du planning final.
 
 Chaque fonction ``cX_...`` reçoit le planning (une ligne par camion) et les lignes livrées
 (une ligne par ligne de besoin), et retourne les cas qui violent la contrainte :
@@ -12,7 +12,8 @@ import pandas as pd
 from .charge import charges_camions, ecart, hors_tolerance
 from .config import FENETRE, JOURS_FIXES_MAX, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion, cout_total
-from .donnees import CONTROLE, DEBUT, FIN, NB_RESERVE, SEMAINES, USINES, besoins
+from .donnees import CONTROLE, DEBUT_LIVRAISONS, FIN, NB_RESERVE, SEMAINES, USINES, besoins
+from .jours_fixes import profil_utilise
 
 
 def optimises(planning: pd.DataFrame) -> pd.DataFrame:
@@ -94,19 +95,17 @@ def c6_avance(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
 
 
 def c7_jours_ouvres(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
-    """C7 : livraison un jour ouvré, dans l'horizon du planning.
+    """C7 : livraison un jour ouvré, dans l'horizon du planning (semaine ajoutée avant le planning comprise).
 
     Returns:
-        Les camions du week-end ou hors de l'horizon.
+        Les camions du week-end, d'avant le lundi 02/11 ou d'après la fin du planning.
     """
     d = planning["date"]
-    return planning[(d.dt.day_of_week >= 5) | (d < DEBUT) | (d > FIN)]
+    return planning[(d.dt.day_of_week >= 5) | (d < DEBUT_LIVRAISONS) | (d > FIN)]
 
 
 def c8_jours_fixes(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
-    """C8 : chaque couple a 1 à 3 jours fixes, et tous ses camions partent un de ces jours.
-
-    Aucune exception, y compris au début du planning : un camion de démarrage est une violation.
+    """C8 : chaque couple a 1 à 3 jours fixes, et tous ses camions partent un de ces jours, sans exception.
 
     Returns:
         Les camions optimisés avec un profil invalide ou partis hors de leurs jours fixes.
@@ -114,7 +113,7 @@ def c8_jours_fixes(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame
     p = optimises(planning)
     mauvais_profil = ~p["profil"].map(len).between(1, JOURS_FIXES_MAX)
     hors_profil = np.array([d.day_of_week not in prof for d, prof in zip(p["date"], p["profil"])], dtype=bool)
-    return p[mauvais_profil | hors_profil | p["demarrage"].astype(bool)]
+    return p[mauvais_profil | hors_profil]
 
 
 def c9_un_camion_par_jour(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
@@ -151,6 +150,19 @@ def c10_lissage(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(lignes_hors)
 
 
+def c11_profil_utilise(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
+    """C11 : un couple à 2 ou 3 jours fixes livre au moins une semaine sur tous ses jours fixes.
+
+    Returns:
+        Les couples qui ne livrent jamais tous leurs jours fixes la même semaine
+        (colonnes ``plant``, ``supplier_id``, ``profil``).
+    """
+    manques = [(plant, supplier, g["profil"].iloc[0])
+               for (plant, supplier), g in optimises(planning).groupby(["plant", "supplier_id"])
+               if not profil_utilise(g["date"], g["profil"].iloc[0])]
+    return pd.DataFrame(manques, columns=["plant", "supplier_id", "profil"])
+
+
 CONTRAINTES: list[tuple[str, str, str, Callable[..., pd.DataFrame]]] = [
     ("C1", "Poids ≤ 24,5 t", "dure", c1_poids),
     ("C2", "Volume ≤ 110,4 m³", "dure", c2_volume),
@@ -162,6 +174,7 @@ CONTRAINTES: list[tuple[str, str, str, Callable[..., pd.DataFrame]]] = [
     ("C8", "Jours fixes (1 à 3 par couple, sans exception)", "dure", c8_jours_fixes),
     ("C9", "Au plus 1 camion par couple et par jour", "dure", c9_un_camion_par_jour),
     ("C10", "Lissage (écart ≤ 35 %)", "souple", c10_lissage),
+    ("C11", "Profil utilisé : une semaine sur tous ses jours fixes", "dure", c11_profil_utilise),
 ]
 """Les contraintes : ``(code, description, type "dure" ou "souple", fonction de vérification)``."""
 

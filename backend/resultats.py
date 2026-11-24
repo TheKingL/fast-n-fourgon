@@ -22,7 +22,7 @@ class Resultats:
         planning: planning final, camions optimisés seulement (une ligne par camion).
         planning_complet: planning final, camions réservés compris (une ligne par camion).
         lignes_complet: lignes de besoin livrées, avec leur ``camion_id`` et leur ``date_livraison``.
-        controle_contraintes: synthèse des contraintes C1 à C10 (une ligne par contrainte).
+        controle_contraintes: synthèse des contraintes C1 à C11 (une ligne par contrainte).
         validation: contrôles de cohérence du planning final (``OK`` / ``ÉCHEC``).
         bilan: tableau des économies, une ligne par version.
         par_usine: économies par usine, avec une ligne ``Total``.

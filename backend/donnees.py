@@ -36,7 +36,7 @@ lignes_reserves["date_livraison"], lignes_reserves["avance_jours"] = lignes_rese
 
 camions_reserves: pd.DataFrame = pd.DataFrame({
     "numero": lignes_reserves["numero"], "plant": lignes_reserves["plant"], "supplier_id": lignes_reserves["supplier_id"],
-    "date": lignes_reserves["need_date"], "demarrage": False, "nb_lignes": 1, "poids": np.nan,
+    "date": lignes_reserves["need_date"], "nb_lignes": 1, "poids": np.nan,
     "volume": lignes_reserves["volume"], "cout": [cout_camion(np.nan, s) for s in lignes_reserves["supplier_id"]],
     "motif": "poids inconnu"})
 """Un camion réservé par ligne sans poids, chiffré au tarif ``> 4 000 kg``."""
@@ -69,15 +69,20 @@ COUT_BASELINE: float = camions_base["cout"].sum()
 
 # Horizon du planning
 DEBUT: pd.Timestamp = besoins["need_date"].min()   # lundi 09/11
-"""Premier jour de l'horizon du planning."""
+"""Premier jour du planning des besoins."""
+DEBUT_LIVRAISONS: pd.Timestamp = DEBUT - pd.Timedelta(days=7)   # lundi 02/11
+"""Premier jour où un camion peut partir : une semaine est ajoutée avant le planning, pour que les premiers besoins
+partent eux aussi un jour fixe (le dernier jour fixe avant un besoin est toujours à moins de 7 jours)."""
 FIN: pd.Timestamp = besoins["need_date"].max()     # vendredi 18/12
 """Dernier jour de l'horizon du planning."""
-SEMAINES: list[int] = sorted(besoins["need_date"].dt.isocalendar().week.unique())
-"""Numéros de semaine ISO de l'horizon, dans l'ordre."""
+SEMAINES: list[int] = sorted({int(w) for w in besoins["need_date"].dt.isocalendar().week}
+                             | {int(DEBUT_LIVRAISONS.isocalendar().week)})
+"""Numéros de semaine ISO de l'horizon, dans l'ordre, semaine ajoutée avant le planning comprise."""
 NB_SEMAINES: int = len(SEMAINES)
 """Nombre de semaines de l'horizon."""
-CONTROLE: list[int] = list(range(NB_SEMAINES - 1))   # la dernière semaine est incomplète : pas contrôlée
-"""Positions (dans ``SEMAINES``) des semaines contrôlées pour le lissage : toutes sauf la dernière, incomplète."""
+CONTROLE: list[int] = list(range(1, NB_SEMAINES - 1))   # semaine ajoutée et dernière semaine incomplètes : pas contrôlées
+"""Positions (dans ``SEMAINES``) des semaines contrôlées pour le lissage : toutes sauf la semaine ajoutée avant le
+planning (elle ne reçoit que quelques livraisons anticipées, jamais le lundi) et la dernière, incomplètes."""
 USINES: list[str] = sorted(besoins["plant"].unique())
 """Codes des usines."""
 IDS_ATTENDUS: set[str] = {f"L{i}" for i in besoins.index} | set(lignes_reserves["id_ligne"])
