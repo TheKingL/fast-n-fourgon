@@ -14,7 +14,9 @@ Sorties (écrites dans ``data/gold/``) :
 
 - sortie 1, ``sortie1_profils.csv`` : le profil à appliquer pour chaque couple (aperçu dans la console) ;
 - sortie 2, ``sortie2_camions.csv`` : les materials regroupés dans chaque camion (détail d'un camion dans la console) ;
-- ``bilan.csv`` : tableau des économies (baseline vs chaque étape du moteur), aussi affiché dans la console.
+- ``bilan.csv`` : tableau des économies (baseline vs chaque étape du moteur), aussi affiché dans la console ;
+- ``alertes.csv`` : les cas où une règle ne peut pas être respectée (2 camions un même jour, camion réservé hors
+  jours fixes), avec leur cause et l'action à mener.
 
 Lancement (depuis la racine du dépôt)::
 
@@ -31,7 +33,7 @@ import sys
 import pandas as pd
 
 from backend import config, donnees, sorties
-from backend.contraintes import valider
+from backend.contraintes import alertes, valider
 from backend.formatage import eur, nombre, pourcent
 from backend.jours_fixes import VARIANTES, Scenarios, algorithme_de_base
 from backend.lissage import lisser
@@ -91,6 +93,7 @@ def executer() -> Resultats:
         bilan=sorties.calculer_bilan(versions), par_usine=sorties.economies_par_usine(planning_complet),
         sortie1=sorties.construire_sortie1(planning),
         sortie2=sorties.construire_sortie2(lignes_complet, planning_complet),
+        alertes=alertes(planning_complet, lignes_complet),
     )
 
 
@@ -113,6 +116,9 @@ def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]
 
     print("\n=== Contraintes ===")
     print(r.controle_contraintes.drop(columns="Description").to_string())
+
+    print(f"\n=== Alertes : {len(r.alertes)} cas où une règle ne peut pas être respectée (détail dans alertes.csv) ===")
+    print(r.alertes.groupby(["regle", "cause"]).size().rename("cas").to_string())
 
     print("\n=== Économies (camions réservés compris) ===")
     print(r.bilan.to_string(index=False, na_rep="–", formatters={
@@ -151,7 +157,7 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
 
     r = executer()
-    fichiers = sorties.exporter(r.sortie1, r.sortie2, r.bilan)
+    fichiers = sorties.exporter(r.sortie1, r.sortie2, r.bilan, r.alertes)
 
     camion_detail = int(sys.argv[1]) if len(sys.argv) > 1 else sorties.camion_le_plus_charge(r.planning_complet)
     assert camion_detail in set(r.sortie2["camion_id"]), f"camion {camion_detail} inconnu (1 à {r.sortie2['camion_id'].max()})"

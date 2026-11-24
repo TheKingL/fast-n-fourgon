@@ -29,6 +29,7 @@ Fichiers écrits dans `data/gold/` :
 | `sortie1_profils.csv` | le profil de livraison (jours fixes) à appliquer pour chaque couple |
 | `sortie2_camions.csv` | les materials chargés dans chaque camion |
 | `bilan.csv` | les économies de chaque étape du moteur par rapport à la baseline |
+| `alertes.csv` | les cas où une règle ne peut pas être respectée (2 camions un même jour pour un couple, camion réservé hors jours fixes), avec leur cause et l'action à mener |
 
 ## Structure
 

@@ -28,6 +28,8 @@ class Resultats:
         par_usine: économies par usine, avec une ligne ``Total``.
         sortie1: profil à appliquer pour chaque couple.
         sortie2: materials chargés dans chaque camion.
+        alertes: cas où une règle ne peut pas être respectée (2 camions un même jour, camion réservé hors jours
+            fixes), à notifier (voir ``contraintes.alertes``).
     """
 
     scenarios: Scenarios
@@ -46,3 +48,4 @@ class Resultats:
     par_usine: pd.DataFrame
     sortie1: pd.DataFrame
     sortie2: pd.DataFrame
+    alertes: pd.DataFrame

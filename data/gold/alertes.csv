@@ -1,0 +1,140 @@
+regle,usine,fournisseur,date,camions,cause,a_faire
+C8 : camion hors jours fixes,PLT_001,SUP_00108,2026-11-11,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-11-12,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-11-13,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-11-17,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-11-20,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00144,2026-11-20,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-11-24,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00005,2026-11-26,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-01,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-01,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-04,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-04,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-08,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00108,2026-12-10,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-10,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00005,2026-12-14,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-14,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00129,2026-12-15,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_001,SUP_00091,2026-12-16,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00107,2026-11-09,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00109,2026-11-09,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-11-09,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00133,2026-11-09,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-11-10,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-11-11,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00127,2026-11-11,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00145,2026-11-11,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00107,2026-11-12,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00054,2026-11-17,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00018,2026-11-20,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00018,2026-11-20,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00046,2026-11-20,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00046,2026-11-20,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00087,2026-11-20,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00032,2026-11-23,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-11-23,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-11-24,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00145,2026-11-24,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00046,2026-11-26,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00046,2026-11-26,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00054,2026-11-26,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00077,2026-11-26,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00087,2026-11-26,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00018,2026-11-27,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00032,2026-11-27,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00046,2026-11-27,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00046,2026-11-27,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00087,2026-11-27,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-11-27,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00032,2026-11-30,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00107,2026-11-30,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00145,2026-12-01,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00080,2026-12-02,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-12-02,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00133,2026-12-02,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00077,2026-12-03,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00145,2026-12-03,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00107,2026-12-04,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-12-04,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00127,2026-12-04,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-12-07,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00077,2026-12-08,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00117,2026-12-08,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00133,2026-12-08,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_002,SUP_00145,2026-12-08,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-10,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-11,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-12,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-13,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00085,2026-11-17,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-17,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-18,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-19,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-20,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-24,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-25,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-26,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-11-27,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-12-04,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-12-08,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-12-09,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00074,2026-12-10,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-12-10,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-12-11,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-12-15,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_003,SUP_00129,2026-12-16,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00112,2026-11-10,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-10,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-10,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-10,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-13,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-13,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-13,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-17,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-17,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-17,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-20,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00153,2026-11-20,1,"ligne sans poids (camion réservé), couple sans autre livraison (pas de jours fixes)",obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-11-27,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-11-30,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-01,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-02,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-04,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-07,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-08,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-09,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-11,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-14,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-15,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C8 : camion hors jours fixes,PLT_004,SUP_00001,2026-12-18,1,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_001,SUP_00129,2026-12-01,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_001,SUP_00129,2026-12-04,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_001,SUP_00129,2026-12-09,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_001,SUP_00005,2026-12-11,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00107,2026-11-17,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00019,2026-11-18,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00037,2026-11-19,2,"besoin d'un jour > 24,5 t","aucune : le besoin du jour dépasse la capacité d'un camion, 2 camions sont nécessaires"
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00018,2026-11-20,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00046,2026-11-20,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00097,2026-11-20,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00037,2026-11-26,2,"besoin d'un jour > 24,5 t","aucune : le besoin du jour dépasse la capacité d'un camion, 2 camions sont nécessaires"
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00046,2026-11-26,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00046,2026-11-27,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_002,SUP_00019,2026-12-02,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_003,SUP_00129,2026-11-16,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_003,SUP_00102,2026-11-18,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_003,SUP_00129,2026-11-23,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_003,SUP_00129,2026-11-30,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_003,SUP_00129,2026-12-07,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_003,SUP_00129,2026-12-14,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00153,2026-11-10,3,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00046,2026-11-11,2,"besoin d'un jour > 24,5 t","aucune : le besoin du jour dépasse la capacité d'un camion, 2 camions sont nécessaires"
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00153,2026-11-13,3,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00153,2026-11-17,3,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00153,2026-11-20,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00046,2026-11-25,2,"besoin d'un jour > 24,5 t","aucune : le besoin du jour dépasse la capacité d'un camion, 2 camions sont nécessaires"
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00001,2026-11-26,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00001,2026-12-10,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
+C9 : 2 camions ou plus le même jour,PLT_004,SUP_00135,2026-12-14,2,ligne sans poids (camion réservé),obtenir le poids de la ligne auprès du client pour pouvoir la consolider
