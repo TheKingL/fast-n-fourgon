@@ -12,12 +12,18 @@ import io
 import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import pandas as pd
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.worksheet import Worksheet
+
+try:                                    # openpyxl est facultatif : sans lui, seul l'export CSV est proposé
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+    EXCEL_DISPONIBLE: bool = True
+except ImportError:
+    EXCEL_DISPONIBLE = False
+if TYPE_CHECKING:
+    from openpyxl.worksheet.worksheet import Worksheet
 
 from backend.resultats import Resultats
 from backend.sorties import construire_sortie3
@@ -110,7 +116,7 @@ def par_usine(r: Resultats) -> pd.DataFrame:
 # =====================================================================================================
 # Excel
 # =====================================================================================================
-def _ecrire(feuille: Worksheet, table: pd.DataFrame, colonnes: dict[str, tuple[str, str]], ligne: int = 1) -> int:
+def _ecrire(feuille: "Worksheet", table: pd.DataFrame, colonnes: dict[str, tuple[str, str]], ligne: int = 1) -> int:
     """Écrit une table mise en forme dans une feuille, à partir d'une ligne donnée.
 
     Args:

@@ -205,8 +205,10 @@ with carte("export"):
     choix = c_choix.pills("Livrables", list(export.LIVRABLES), selection_mode="multi", key="export_livrables",
                           default=list(export.LIVRABLES), format_func=lambda c: export.LIVRABLES[c].libelle,
                           help="Synthèse : bilan des économies et économies par usine.")
-    format_export = c_format.segmented_control("Format", ["Excel (.xlsx)", "CSV (.zip)"], required=True,
-                                               default="Excel (.xlsx)", key="export_format", width="stretch")
+    formats = ["Excel (.xlsx)", "CSV (.zip)"] if export.EXCEL_DISPONIBLE else ["CSV (.zip)"]
+    format_export = c_format.segmented_control(
+        "Format", formats, required=True, default=formats[0], key="export_format", width="stretch",
+        help=None if export.EXCEL_DISPONIBLE else "Export Excel indisponible : le module openpyxl n'est pas installé.")
     if format_export == "CSV (.zip)":
         excel_fr = c_format.toggle("CSV pour Excel français", value=True, key="export_excel_fr",
                                    help="Séparateur « ; » et virgule décimale, lisibles directement par un Excel "
