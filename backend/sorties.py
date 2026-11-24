@@ -209,7 +209,7 @@ def detail_camion(sortie2: pd.DataFrame, camion_id: int, nb_affiches: int = NB_A
 # =====================================================================================================
 # Export
 # =====================================================================================================
-def exporter(sortie1: pd.DataFrame, sortie2: pd.DataFrame, bilan: pd.DataFrame,
+def exporter(sortie1: pd.DataFrame, sortie2: pd.DataFrame, bilan: pd.DataFrame, alertes: pd.DataFrame,
              dossier: Path = SORTIE) -> dict[str, pd.DataFrame]:
     """Écrit les fichiers CSV de sortie.
 
@@ -217,14 +217,17 @@ def exporter(sortie1: pd.DataFrame, sortie2: pd.DataFrame, bilan: pd.DataFrame,
         sortie1: la sortie 1.
         sortie2: la sortie 2.
         bilan: le tableau des économies.
+        alertes: les cas où une règle ne peut pas être respectée.
         dossier: dossier de destination, créé s'il n'existe pas ; ``data/gold`` par défaut.
 
     Returns:
-        Nom du fichier -> table écrite (``sortie1_profils.csv``, ``sortie2_camions.csv``, ``bilan.csv``).
+        Nom du fichier -> table écrite (``sortie1_profils.csv``, ``sortie2_camions.csv``, ``bilan.csv``,
+        ``alertes.csv``).
     """
     dossier.mkdir(parents=True, exist_ok=True)
     fichiers = {"sortie1_profils.csv": sortie1, "sortie2_camions.csv": sortie2,
-                "bilan.csv": bilan.round({"Coût": 2, "Économie vs baseline": 2, "Économie (%)": 4, "Avance moyenne (j)": 2})}
+                "bilan.csv": bilan.round({"Coût": 2, "Économie vs baseline": 2, "Économie (%)": 4, "Avance moyenne (j)": 2}),
+                "alertes.csv": alertes}
     for nom_fichier, table in fichiers.items():
         table.to_csv(dossier / nom_fichier, index=False, date_format="%Y-%m-%d")
     return fichiers
