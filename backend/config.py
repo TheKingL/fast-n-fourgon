@@ -43,8 +43,8 @@ VOLUME_MAX: Final[float] = 110.4
 """Volume maximal d'un camion, en m³."""
 FENETRE: Final[pd.Timedelta] = pd.Timedelta(days=7)
 """Avance maximale d'une livraison sur le besoin."""
-JOURS_FIXES_MAX: Final[int] = 2
-"""Nombre maximal de jours fixes de livraison par semaine pour un couple (1 ou 2)."""
+JOURS_FIXES_MAX: Final[int] = 3
+"""Nombre maximal de jours fixes de livraison par semaine pour un couple (1, 2 ou 3)."""
 SEUIL_LISSAGE: Final[float] = 0.35
 """Écart maximal toléré entre la charge d'un jour et la moyenne de la semaine (0.35 = 35 %)."""
 MIN_CAMIONS_SEMAINE: Final[int] = 5

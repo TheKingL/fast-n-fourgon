@@ -38,7 +38,7 @@ COLONNES_METRIQUES: Final[list[str]] = ["run_id", "horodatage", "categorie", "me
 FICHIERS_RUN: Final[dict[str, str]] = {"schedule.csv": "Schedule d'entrée", "sortie1_profils.csv": "Sortie 1 : profils",
                                        "sortie2_camions.csv": "Sortie 2 : camions",
                                        "sortie3_savings.csv": "Sortie 3 : savings par couple",
-                                       "bilan.csv": "Bilan des économies"}
+                                       "bilan.csv": "Bilan des économies", "alertes.csv": "Alertes"}
 """Fichiers gardés pour chaque run : nom -> libellé."""
 
 
@@ -83,6 +83,7 @@ def enregistrer_run(source: str, schedule: pd.DataFrame, r: Resultats, metriques
     r.sortie2.to_csv(dossier / "sortie2_camions.csv", index=False, date_format="%Y-%m-%d")
     construire_sortie3(r.camions_base, r.planning_complet).to_csv(dossier / "sortie3_savings.csv", index=False)
     r.bilan.to_csv(dossier / "bilan.csv", index=False)
+    r.alertes.to_csv(dossier / "alertes.csv", index=False, date_format="%Y-%m-%d")
     return run_id
 
 

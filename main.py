@@ -4,7 +4,9 @@ Le code du moteur est dans le package ``backend/`` (un module par étape) ; ce f
 
 0. entrée : les données du projet (``data/silver``, ``data/baseline``) ou un schedule brut, nettoyé
    (milestone 1) puis comparé à sa baseline (milestone 2) ;
-1. jours fixes : chaque couple fournisseur × usine choisit ses 1 ou 2 jours de livraison les moins chers ;
+1. jours fixes : chaque couple fournisseur × usine choisit ses 1 à 3 jours de livraison les moins chers ; les
+   premiers besoins peuvent partir dans la semaine ajoutée avant le planning, et un couple à 2 ou 3 jours doit
+   livrer au moins une semaine sur tous ses jours ;
 2. contrôle de l'équilibre des usines (C10) ;
 3. lissage : changements de profil au moindre surcoût jusqu'à ce que les semaines soient dans la tolérance ;
 4. report des lignes sur le jour fixe suivant, puis planning final ;
@@ -14,7 +16,9 @@ Sorties (écrites dans ``data/gold/``) :
 
 - sortie 1, ``sortie1_profils.csv`` : le profil à appliquer pour chaque couple (aperçu dans la console) ;
 - sortie 2, ``sortie2_camions.csv`` : les materials regroupés dans chaque camion (détail d'un camion dans la console) ;
-- ``bilan.csv`` : tableau des économies (baseline vs chaque étape du moteur), aussi affiché dans la console.
+- ``bilan.csv`` : tableau des économies (baseline vs chaque étape du moteur), aussi affiché dans la console ;
+- ``alertes.csv`` : les cas où une règle ne peut pas être respectée (2 camions un même jour, camion réservé hors
+  jours fixes), avec leur cause et l'action à mener.
 
 Lancement (depuis la racine du dépôt)::
 
@@ -35,7 +39,7 @@ import pandas as pd
 
 from backend import config, donnees, sorties
 from backend.baseline import construire_baseline
-from backend.contraintes import valider
+from backend.contraintes import alertes, valider
 from backend.nettoyage import nettoyer
 from backend.formatage import eur, nombre, pourcent
 from backend.jours_fixes import VARIANTES, Scenarios, algorithme_de_base
@@ -86,7 +90,10 @@ def executer(schedule: pd.DataFrame | None = None) -> Resultats:
     journaux: dict[str, pd.DataFrame] = {}
     for nom, profils in VARIANTES.items():
         choix_lisses[nom], journaux[nom] = lisser(scenarios, choix_initiaux[nom], profils)
-    principale = min(VARIANTES, key=lambda nom: scenarios.cout_choix(choix_lisses[nom]))   # la moins chère après lissage
+    # Variante retenue : la moins chère après lissage, parmi celles qui respectent C9 (une variante à 1 jour fixe
+    # peut obliger un gros couple à 2 camions le même jour, alors qu'un 2e jour fixe l'éviterait)
+    admissibles = [nom for nom in VARIANTES if scenarios.camions_en_trop_evitables(choix_lisses[nom]) == 0]
+    principale = min(admissibles, key=lambda nom: scenarios.cout_choix(choix_lisses[nom]))
 
     # ---------- Bloc 4 : report et planning final (planning de chaque étape, pour le bilan) ----------
     plannings: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
@@ -116,6 +123,7 @@ def executer(schedule: pd.DataFrame | None = None) -> Resultats:
         bilan=sorties.calculer_bilan(versions), par_usine=sorties.economies_par_usine(planning_complet),
         sortie1=sorties.construire_sortie1(planning),
         sortie2=sorties.construire_sortie2(lignes_complet, planning_complet),
+        alertes=alertes(planning_complet, lignes_complet),
         quarantaine=donnees.quarantaine, camions_base=donnees.camions_base,
     )
 
@@ -130,7 +138,8 @@ def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]
     """
     besoins = donnees.besoins
     print(f"Besoins à consolider : {len(besoins)} lignes, {besoins.groupby(['plant', 'supplier_id']).ngroups} couples, "
-          f"{len(donnees.USINES)} usines, du {donnees.DEBUT:%d/%m} au {donnees.FIN:%d/%m}")
+          f"{len(donnees.USINES)} usines, du {donnees.DEBUT:%d/%m} au {donnees.FIN:%d/%m} "
+          f"(livraisons possibles dès le {donnees.DEBUT_LIVRAISONS:%d/%m})")
     print(f"Camions réservés (lignes sans poids) : {donnees.NB_RESERVE}, {eur(donnees.COUT_RESERVE)}")
     print(f"Variante retenue : {r.principale} ({len(r.journaux[r.principale])} changements de profil au lissage)")
     print(f"Report : {r.journal_report['lignes_reportees'].sum()} lignes reportées sur le jour fixe suivant, "
@@ -138,6 +147,9 @@ def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]
 
     print("\n=== Contraintes ===")
     print(r.controle_contraintes.drop(columns="Description").to_string())
+
+    print(f"\n=== Alertes : {len(r.alertes)} cas où une règle ne peut pas être respectée (détail dans alertes.csv) ===")
+    print(r.alertes.groupby(["regle", "cause"]).size().rename("cas").to_string())
 
     print("\n=== Économies (camions réservés compris) ===")
     print(r.bilan.to_string(index=False, na_rep="–", formatters={
@@ -149,13 +161,9 @@ def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]
         "cout_final": eur, "economie": eur, "economie_pct": pourcent}))
 
     print(f"\n=== Sortie 1 : le profil à appliquer pour chaque couple ({len(r.sortie1)} couples, aperçu des 10 premiers) ===")
-    print(r.sortie1.head(10).rename(columns={
-        "fournisseur": "Fournisseur", "usine": "Usine", "distance_km": "Distance",
-        "livraisons_semaine_actuelles": "Livraisons / sem. actuelles", "frequence_cible": "Fréquence cible", "jours": "Jour",
-        "camions_semaine": "Camions / sem.", "remplissage_poids": "Remplissage poids"})
-        .to_string(index=False, formatters={
-            "Distance": lambda d: "inconnue" if pd.isna(d) else f"{d:.0f} km", "Livraisons / sem. actuelles": nombre,
-            "Fréquence cible": "{} / semaine".format, "Camions / sem.": nombre, "Remplissage poids": pourcent}))
+    print(r.sortie1.head(10).to_string(index=False, formatters={
+        "Distance": lambda d: "inconnue" if pd.isna(d) else f"{d:.0f} km", "Livraisons / sem. actuelles": nombre,
+        "Fréquence cible": "{} / semaine".format, "Camions / sem.": nombre, "Remplissage poids": pourcent}))
 
     resume, table_camion = sorties.detail_camion(r.sortie2, camion_detail)
     print(f"\n=== Sortie 2 : les materials regroupés dans chaque camion ({r.sortie2['camion_id'].nunique()} camions) ===")
@@ -182,7 +190,7 @@ def main() -> None:
 
     schedule = pd.read_csv(arguments.schedule, encoding="utf-8-sig") if arguments.schedule else None
     r = executer(schedule)
-    fichiers = sorties.exporter(r.sortie1, r.sortie2, r.bilan)
+    fichiers = sorties.exporter(r.sortie1, r.sortie2, r.bilan, r.alertes)
 
     camion_detail = arguments.camion if arguments.camion is not None else sorties.camion_le_plus_charge(r.planning_complet)
     assert camion_detail in set(r.sortie2["camion_id"]), f"camion {camion_detail} inconnu (1 à {r.sortie2['camion_id'].max()})"

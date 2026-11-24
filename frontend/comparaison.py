@@ -86,6 +86,17 @@ def comparer(a: dict[str, float], b: dict[str, float], categories: dict[str, str
     return table
 
 
+COLONNES_SORTIE1: dict[str, str] = {"Fournisseur": "fournisseur", "Usine": "usine", "Jours": "jours",
+                                    "Camions / sem.": "camions_semaine"}
+"""En-têtes de la sortie 1 -> noms utilisés ici (les runs enregistrés avant le renommage gardent les anciens noms)."""
+
+
+def normaliser_sortie1(sortie1: pd.DataFrame) -> pd.DataFrame:
+    """Ramène une sortie 1, ancienne ou nouvelle, aux noms de colonnes ``fournisseur``, ``usine``, ``jours``,
+    ``camions_semaine``."""
+    return sortie1.rename(columns=COLONNES_SORTIE1)
+
+
 def changements(sortie1_a: pd.DataFrame, sortie1_b: pd.DataFrame) -> pd.DataFrame:
     """Compare les profils de livraison (sortie 1) de deux plannings, couple par couple.
 
@@ -98,6 +109,7 @@ def changements(sortie1_a: pd.DataFrame, sortie1_b: pd.DataFrame) -> pd.DataFram
         ``STATUTS``), ``jours A``, ``jours B``, ``camions / sem. A``, ``camions / sem. B``.
     """
     cles = ["usine", "fournisseur"]
+    sortie1_a, sortie1_b = normaliser_sortie1(sortie1_a), normaliser_sortie1(sortie1_b)
     a = sortie1_a[cles + ["jours", "camions_semaine"]]
     b = sortie1_b[cles + ["jours", "camions_semaine"]]
     t = a.merge(b, on=cles, how="outer", suffixes=(" A", " B"), indicator=True)
@@ -166,7 +178,8 @@ def afficher_comparaison(table: pd.DataFrame, libelle_a: str, libelle_b: str, cl
         section("Ce qui a changé dans le planning", "couples fournisseur × usine (sortie 1)")
         diff = changements(sortie1_a, sortie1_b)
         compte = diff["statut"].value_counts()
-        fournisseurs_a, fournisseurs_b = set(sortie1_a["fournisseur"]), set(sortie1_b["fournisseur"])
+        fournisseurs_a = set(normaliser_sortie1(sortie1_a)["fournisseur"])
+        fournisseurs_b = set(normaliser_sortie1(sortie1_b)["fournisseur"])
         st.html(pastille(f"{compte.get('nouveau couple', 0)} nouveau(x) couple(s)", "info")
                 + pastille(f"{compte.get('couple disparu', 0)} couple(s) disparu(s)", "info")
                 + pastille(f"{compte.get('jours fixes changés', 0)} couple(s) aux jours fixes changés", "info")

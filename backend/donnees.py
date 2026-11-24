@@ -38,15 +38,19 @@ camions_base: pd.DataFrame
 COUT_BASELINE: float
 """Coût de la baseline hors camions réservés, en €."""
 DEBUT: pd.Timestamp
-"""Premier jour de l'horizon du planning."""
+"""Premier jour du planning des besoins."""
+DEBUT_LIVRAISONS: pd.Timestamp
+"""Premier jour où un camion peut partir : une semaine est ajoutée avant le planning, pour que les premiers besoins
+partent eux aussi un jour fixe (le dernier jour fixe avant un besoin est toujours à moins de 7 jours)."""
 FIN: pd.Timestamp
 """Dernier jour de l'horizon du planning."""
 SEMAINES: list[int]
-"""Numéros de semaine ISO de l'horizon, dans l'ordre."""
+"""Numéros de semaine ISO de l'horizon, dans l'ordre, semaine ajoutée avant le planning comprise."""
 NB_SEMAINES: int
 """Nombre de semaines de l'horizon."""
 CONTROLE: list[int]
-"""Positions (dans ``SEMAINES``) des semaines contrôlées pour le lissage : toutes sauf la dernière, incomplète."""
+"""Positions (dans ``SEMAINES``) des semaines contrôlées pour le lissage : toutes sauf la semaine ajoutée avant le
+planning (elle ne reçoit que quelques livraisons anticipées, jamais le lundi) et la dernière, incomplètes."""
 USINES: list[str]
 """Codes des usines."""
 IDS_ATTENDUS: set[str]
@@ -62,7 +66,7 @@ def charger(silver_clean: pd.DataFrame, lignes_quarantaine: pd.DataFrame, baseli
         baseline: camions de la baseline, réservés compris (voir ``baseline.construire_baseline``).
     """
     global silver, quarantaine, N_SILVER, besoins, lignes_reserves, camions_reserves, COUT_RESERVE, NB_RESERVE
-    global camions_base, COUT_BASELINE, DEBUT, FIN, SEMAINES, NB_SEMAINES, CONTROLE, USINES, IDS_ATTENDUS
+    global camions_base, COUT_BASELINE, DEBUT, DEBUT_LIVRAISONS, FIN, SEMAINES, NB_SEMAINES, CONTROLE, USINES, IDS_ATTENDUS
 
     silver, quarantaine = silver_clean, lignes_quarantaine
     N_SILVER = len(silver)
@@ -84,8 +88,7 @@ def charger(silver_clean: pd.DataFrame, lignes_quarantaine: pd.DataFrame, baseli
     lignes_reserves["date_livraison"], lignes_reserves["avance_jours"] = lignes_reserves["need_date"], 0
     camions_reserves = pd.DataFrame({
         "numero": lignes_reserves["numero"], "plant": lignes_reserves["plant"],
-        "supplier_id": lignes_reserves["supplier_id"], "date": lignes_reserves["need_date"], "demarrage": False,
-        "nb_lignes": 1, "poids": lignes_reserves["weight"].astype(float), "volume": lignes_reserves["volume"],
+        "supplier_id": lignes_reserves["supplier_id"], "date": lignes_reserves["need_date"], "nb_lignes": 1, "poids": lignes_reserves["weight"].astype(float), "volume": lignes_reserves["volume"],
         "cout": [cout_camion(p, s) for p, s in zip(lignes_reserves["weight"], lignes_reserves["supplier_id"])],
         "motif": np.where(lignes_reserves["weight"].isna(), "poids inconnu", "volume inconnu")})
     COUT_RESERVE, NB_RESERVE = float(camions_reserves["cout"].sum()), len(camions_reserves)
@@ -98,9 +101,11 @@ def charger(silver_clean: pd.DataFrame, lignes_quarantaine: pd.DataFrame, baseli
 
     # Horizon du planning
     DEBUT, FIN = besoins["need_date"].min(), besoins["need_date"].max()
-    SEMAINES = sorted(besoins["need_date"].dt.isocalendar().week.unique())
+    DEBUT_LIVRAISONS = DEBUT - pd.Timedelta(days=7)
+    SEMAINES = sorted({int(w) for w in besoins["need_date"].dt.isocalendar().week}
+                      | {int(DEBUT_LIVRAISONS.isocalendar().week)})
     NB_SEMAINES = len(SEMAINES)
-    CONTROLE = list(range(NB_SEMAINES - 1))   # la dernière semaine est incomplète : pas contrôlée
+    CONTROLE = list(range(1, NB_SEMAINES - 1))   # semaine ajoutée et dernière semaine incomplètes : pas contrôlées
     USINES = sorted(besoins["plant"].unique())
     IDS_ATTENDUS = {f"L{i}" for i in besoins.index} | set(lignes_reserves["id_ligne"])
 

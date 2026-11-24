@@ -6,7 +6,7 @@ Les trois sorties du projet :
 - sortie 2 : les materials regroupés dans chaque camion ;
 - sortie 3 : le saving potentiel par couple ;
 
-plus une synthèse (bilan des économies et économies par usine).
+plus une synthèse (bilan des économies et économies par usine) et les alertes à notifier.
 """
 import io
 import zipfile
@@ -43,7 +43,8 @@ class Livrable:
         libelle: nom affiché dans le dashboard.
         onglet: nom de la feuille Excel (31 caractères au plus).
         fichier: nom du fichier CSV.
-        colonnes: nom de colonne -> ``(en-tête lisible, format Excel)`` ; les colonnes absentes sont gardées telles quelles.
+        colonnes: nom de colonne -> ``(en-tête lisible, format Excel)`` ; une colonne absente garde son nom, sans
+            format particulier.
     """
 
     cle: str
@@ -70,21 +71,22 @@ LIVRABLES: Final[dict[str, Livrable]] = {l.cle: l for l in [
         "Économie (%)": ("Économie (%)", PCT), "Avance moyenne (j)": ("Avance moyenne (j)", DECIMAL),
         "Camions": ("Camions", ENTIER)}),
     Livrable("sortie1", "Sortie 1 · profils", "Sortie 1 - Profils", "sortie1_profils.csv", {
-        "fournisseur": ("Fournisseur", ""), "usine": ("Usine", ""), "distance_km": ("Distance (km)", ENTIER),
-        "livraisons_semaine_actuelles": ("Livraisons / sem. actuelles", DECIMAL),
-        "frequence_cible": ("Fréquence cible (jours / sem.)", ENTIER), "jours": ("Jours", ""),
-        "camions_semaine": ("Camions / sem.", DECIMAL), "remplissage_poids": ("Remplissage poids", PCT)}),
+        "Distance": ("Distance (km)", ENTIER), "Livraisons / sem. actuelles": ("Livraisons / sem. actuelles", DECIMAL),
+        "Fréquence cible": ("Fréquence cible (jours / sem.)", ENTIER), "Camions / sem.": ("Camions / sem.", DECIMAL),
+        "Remplissage poids": ("Remplissage poids", PCT)}),
     Livrable("sortie2", "Sortie 2 · camions", "Sortie 2 - Camions", "sortie2_camions.csv", {
         "camion_id": ("Camion", ENTIER), "usine": ("Usine", ""), "fournisseur": ("Fournisseur", ""),
-        "date_livraison": ("Date de livraison", DATE), "jour": ("Jour", ""), "material": ("Material", ""),
-        "quai": ("Quai", ""), "besoins": ("Besoins regroupés", ""), "nb_lignes": ("Lignes de besoin", ENTIER),
-        "quantite": ("Quantité", ENTIER), "poids_kg": ("Poids (kg)", DECIMAL)}),
+        "date_livraison": ("Date de livraison", DATE), "jour": ("Jour", ""), "nb_lignes": ("Lignes de besoin", ENTIER),
+        "Quantité": ("Quantité", ENTIER), "Poids (kg)": ("Poids (kg)", DECIMAL)}),
     Livrable("sortie3", "Sortie 3 · savings", "Sortie 3 - Savings", "sortie3_savings.csv", {
         "fournisseur": ("Fournisseur", ""), "usine": ("Usine", ""), "distance_km": ("Distance (km)", ENTIER),
         "camions_actuels": ("Camions actuels", ENTIER), "cout_actuel": ("Coût actuel", EUR),
         "camions_apres": ("Camions après", ENTIER), "cout_apres": ("Coût après", EUR),
         "economie": ("Économie", EUR), "economie_pct": ("Économie (%)", PCT),
         "cout_actuel_semaine": ("Coût actuel / sem.", EUR), "cout_apres_semaine": ("Coût après / sem.", EUR)}),
+    Livrable("alertes", "Alertes", "Alertes", "alertes.csv", {
+        "regle": ("Règle", ""), "usine": ("Usine", ""), "fournisseur": ("Fournisseur", ""), "date": ("Date", DATE),
+        "camions": ("Camions", ENTIER), "cause": ("Cause", ""), "a_faire": ("À faire", "")}),
 ]}
 """Les tables exportables, dans l'ordre des feuilles du classeur."""
 
@@ -105,7 +107,7 @@ def tables(r: Resultats) -> dict[str, pd.DataFrame]:
         Clé du livrable -> table (``synthese`` est le bilan des économies).
     """
     return {"synthese": r.bilan, "sortie1": r.sortie1, "sortie2": sortie2(r),
-            "sortie3": construire_sortie3(r.camions_base, r.planning_complet)}
+            "sortie3": construire_sortie3(r.camions_base, r.planning_complet), "alertes": r.alertes}
 
 
 def sortie2(r: Resultats) -> pd.DataFrame:

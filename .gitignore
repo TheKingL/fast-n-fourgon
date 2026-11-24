@@ -227,6 +227,7 @@ __marimo__/
 
 # remove test notebook
 test.ipynb
+test_local/
 
 # temp pptx file
 ~$Presentation_cours_projet_consolidation_livraisons.pptx

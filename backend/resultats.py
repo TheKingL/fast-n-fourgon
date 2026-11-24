@@ -22,7 +22,7 @@ class Resultats:
         planning: planning final, camions optimisés seulement (une ligne par camion).
         planning_complet: planning final, camions réservés compris (une ligne par camion).
         lignes_complet: lignes de besoin livrées, avec leur ``camion_id`` et leur ``date_livraison``.
-        controle_contraintes: synthèse des contraintes C1 à C10 (une ligne par contrainte).
+        controle_contraintes: synthèse des contraintes C1 à C11 (une ligne par contrainte).
         validation: contrôles de cohérence du planning final (``OK`` / ``ÉCHEC``).
         bilan: tableau des économies, une ligne par version.
         par_usine: économies par usine, avec une ligne ``Total``.
@@ -30,6 +30,8 @@ class Resultats:
         sortie2: materials chargés dans chaque camion.
         quarantaine: lignes mises en quarantaine au nettoyage, avec leurs ``flags``.
         camions_base: camions de la baseline (hors camions réservés), avec leur coût.
+        alertes: cas où une règle ne peut pas être respectée (2 camions un même jour, camion réservé hors jours
+            fixes), à notifier (voir ``contraintes.alertes``).
     """
 
     scenarios: Scenarios
@@ -50,3 +52,4 @@ class Resultats:
     sortie2: pd.DataFrame
     quarantaine: pd.DataFrame
     camions_base: pd.DataFrame
+    alertes: pd.DataFrame

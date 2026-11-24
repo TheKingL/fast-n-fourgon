@@ -195,12 +195,12 @@ def couples_par_jour(sortie1: pd.DataFrame) -> go.Figure:
     """Nombre de couples livrés chaque jour de la semaine (un couple à 2 jours compte pour chacun).
 
     Args:
-        sortie1: la sortie 1 (colonne ``jours``, par exemple ``"Lundi + Jeudi"``).
+        sortie1: la sortie 1 (colonne ``Jours``, par exemple ``"Lundi + Jeudi"``).
 
     Returns:
         Barres du lundi au vendredi.
     """
-    jours = sortie1["jours"].str.split(" + ", regex=False).explode().value_counts().reindex(JOURS, fill_value=0)
+    jours = sortie1["Jours"].str.split(" + ", regex=False).explode().value_counts().reindex(JOURS, fill_value=0)
     fig = go.Figure(go.Bar(x=jours.index, y=jours.values, marker_color=ORANGE, text=jours.values,
                            textposition="outside", cliponaxis=False,
                            hovertemplate="%{x}<br>%{y} couples<extra></extra>"))

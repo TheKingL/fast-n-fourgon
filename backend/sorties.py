@@ -88,9 +88,9 @@ def construire_sortie1(planning: pd.DataFrame) -> pd.DataFrame:
         planning: planning des camions optimisés (sans les réservés).
 
     Returns:
-        Une ligne par couple : ``fournisseur``, ``usine``, ``distance_km`` (NaN = inconnue),
-        ``livraisons_semaine_actuelles`` (baseline), ``frequence_cible`` (nombre de jours fixes), ``jours``,
-        ``camions_semaine`` et ``remplissage_poids`` (proportion de 24,5 t).
+        Une ligne par couple, avec les colonnes ``Fournisseur``, ``Usine``, ``Distance`` (km, NaN = inconnue),
+        ``Livraisons / sem. actuelles`` (baseline), ``Fréquence cible`` (nombre de jours fixes), ``Jours``,
+        ``Camions / sem.`` et ``Remplissage poids`` (proportion de 24,5 t).
     """
     livraisons_actuelles, _ = moyennes_par_semaine(donnees.camions_base)
     _, camions_semaine = moyennes_par_semaine(planning)
@@ -104,10 +104,13 @@ def construire_sortie1(planning: pd.DataFrame) -> pd.DataFrame:
     sortie1.insert(2, "distance_km", sortie1["supplier_id"].map(distance_brute))
     sortie1.insert(3, "livraisons_semaine_actuelles",
                    [round(livraisons_actuelles.get((p, s), 0), 2) for p, s in zip(sortie1["plant"], sortie1["supplier_id"])])
-    sortie1 = sortie1.rename(columns={"supplier_id": "fournisseur", "plant": "usine"})[
-        ["fournisseur", "usine", "distance_km", "livraisons_semaine_actuelles", "frequence_cible", "jours",
-         "camions_semaine", "remplissage_poids"]].sort_values(["usine", "fournisseur"]).reset_index(drop=True)
-    assert sortie1[["fournisseur", "usine"]].duplicated().sum() == 0      # un profil par couple
+    sortie1 = sortie1.rename(columns={
+        "supplier_id": "Fournisseur", "plant": "Usine", "distance_km": "Distance",
+        "livraisons_semaine_actuelles": "Livraisons / sem. actuelles", "frequence_cible": "Fréquence cible",
+        "jours": "Jours", "camions_semaine": "Camions / sem.", "remplissage_poids": "Remplissage poids"})[
+        ["Fournisseur", "Usine", "Distance", "Livraisons / sem. actuelles", "Fréquence cible", "Jours",
+         "Camions / sem.", "Remplissage poids"]].sort_values(["Usine", "Fournisseur"]).reset_index(drop=True)
+    assert sortie1[["Fournisseur", "Usine"]].duplicated().sum() == 0      # un profil par couple
     assert len(sortie1) == donnees.besoins.groupby(["plant", "supplier_id"]).ngroups
     return sortie1
 
@@ -124,8 +127,8 @@ def construire_sortie2(lignes_complet: pd.DataFrame, planning_complet: pd.DataFr
 
     Returns:
         Une ligne par camion × material × quai : ``camion_id``, ``usine``, ``fournisseur``, ``date_livraison``,
-        ``jour``, ``material``, ``quai``, ``besoins`` (dates regroupées), ``nb_lignes``, ``quantite``,
-        ``poids_kg`` (NaN si inconnu) et ``reserve`` ; triée par camion puis poids décroissant.
+        ``jour``, ``Material``, ``Quai``, ``Besoins regroupés`` (dates regroupées), ``nb_lignes``, ``Quantité``,
+        ``Poids (kg)`` (NaN si inconnu) et ``reserve`` ; triée par camion puis poids décroissant.
     """
     sortie2 = (lignes_complet
                .groupby(["camion_id", "plant", "supplier_id", "date_livraison", "material", "unloading_point"])
@@ -137,6 +140,8 @@ def construire_sortie2(lignes_complet: pd.DataFrame, planning_complet: pd.DataFr
     sortie2.insert(4, "jour", sortie2["date_livraison"].dt.day_of_week.map(dict(enumerate(JOURS))))
     sortie2["poids_kg"] = sortie2["poids_kg"].round(1)
     sortie2 = sortie2.sort_values(["camion_id", "poids_kg", "material"], ascending=[True, False, True]).reset_index(drop=True)
+    sortie2 = sortie2.rename(columns={"material": "Material", "quai": "Quai", "besoins": "Besoins regroupés",
+                                      "quantite": "Quantité", "poids_kg": "Poids (kg)"})
     assert sortie2["nb_lignes"].sum() == len(donnees.IDS_ATTENDUS)          # toutes les lignes de besoin
     assert sortie2["camion_id"].nunique() == len(planning_complet)          # tous les camions
     return sortie2
@@ -217,7 +222,7 @@ def poids_camion(contenu: pd.DataFrame) -> str:
     Returns:
         Par exemple ``"5 812 kg (remplissage poids 23,7 %)"``, ou ``"poids inconnu (camion réservé)"``.
     """
-    poids = contenu["poids_kg"].sum(min_count=1)
+    poids = contenu["Poids (kg)"].sum(min_count=1)
     if pd.isna(poids):
         return "poids inconnu (camion réservé)"
     return f"{nombre(round(poids))} kg (remplissage poids {pourcent(poids / POIDS_MAX)})"
@@ -235,7 +240,7 @@ def detail_camion(sortie2: pd.DataFrame, camion_id: int, nb_affiches: int = NB_A
         ``(résumé du camion sur une ligne, tableau des materials en texte)``.
     """
     contenu = sortie2[sortie2["camion_id"] == camion_id]
-    dates = pd.to_datetime([d for b in contenu["besoins"] for d in b.split(", ")])
+    dates = pd.to_datetime([d for b in contenu["Besoins regroupés"] for d in b.split(", ")])
     un_mois = dates.month.nunique() == 1
 
     def jours_besoin(b: str) -> str:
@@ -243,19 +248,18 @@ def detail_camion(sortie2: pd.DataFrame, camion_id: int, nb_affiches: int = NB_A
         return ", ".join(str(pd.Timestamp(d).day) if un_mois else pd.Timestamp(d).strftime("%d/%m")
                          for d in b.split(", "))
 
-    table = (contenu.head(nb_affiches)[["material", "quai", "besoins", "quantite", "poids_kg"]]
-             .assign(besoins=lambda t: t["besoins"].map(jours_besoin)).reset_index(drop=True))
+    table = (contenu.head(nb_affiches)[["Material", "Quai", "Besoins regroupés", "Quantité", "Poids (kg)"]]
+             .assign(**{"Besoins regroupés": lambda t: t["Besoins regroupés"].map(jours_besoin)}).reset_index(drop=True))
     reste = contenu.iloc[nb_affiches:]
     if len(reste):
         table.loc[len(table)] = [  # type: ignore[assignment]  # ajout d'une ligne : accepté par pandas, pas par ses stubs
-            f"{len(reste)} autres materials", "", "", reste["quantite"].sum(), reste["poids_kg"].sum()]
+            f"{len(reste)} autres materials", "", "", reste["Quantité"].sum(), reste["Poids (kg)"].sum()]
     camion = contenu.iloc[0]
     resume = (f"Camion n° {camion_id} : {camion['fournisseur']} -> {camion['usine']}, {camion['jour'].lower()} "
               f"{camion['date_livraison']:%d/%m}, {len(contenu)} materials, "
               f"{contenu['nb_lignes'].sum()} lignes de besoin, {poids_camion(contenu)}")
     titre_besoins = f"Besoins regroupés (jours de {MOIS[dates[0].month - 1]})" if un_mois else "Besoins regroupés"
-    table = table.rename(columns={"material": "Material", "quai": "Quai", "besoins": titre_besoins,
-                                  "quantite": "Quantité", "poids_kg": "Poids (kg)"})
+    table = table.rename(columns={"Besoins regroupés": titre_besoins})
     return resume, table.to_string(index=False, formatters={"Quantité": nombre,
                                                             "Poids (kg)": lambda p: nombre(round(p))}, na_rep="–")
 
@@ -263,7 +267,7 @@ def detail_camion(sortie2: pd.DataFrame, camion_id: int, nb_affiches: int = NB_A
 # =====================================================================================================
 # Export
 # =====================================================================================================
-def exporter(sortie1: pd.DataFrame, sortie2: pd.DataFrame, bilan: pd.DataFrame,
+def exporter(sortie1: pd.DataFrame, sortie2: pd.DataFrame, bilan: pd.DataFrame, alertes: pd.DataFrame,
              dossier: Path = SORTIE) -> dict[str, pd.DataFrame]:
     """Écrit les fichiers CSV de sortie.
 
@@ -271,14 +275,17 @@ def exporter(sortie1: pd.DataFrame, sortie2: pd.DataFrame, bilan: pd.DataFrame,
         sortie1: la sortie 1.
         sortie2: la sortie 2.
         bilan: le tableau des économies.
+        alertes: les cas où une règle ne peut pas être respectée.
         dossier: dossier de destination, créé s'il n'existe pas ; ``data/gold`` par défaut.
 
     Returns:
-        Nom du fichier -> table écrite (``sortie1_profils.csv``, ``sortie2_camions.csv``, ``bilan.csv``).
+        Nom du fichier -> table écrite (``sortie1_profils.csv``, ``sortie2_camions.csv``, ``bilan.csv``,
+        ``alertes.csv``).
     """
     dossier.mkdir(parents=True, exist_ok=True)
     fichiers = {"sortie1_profils.csv": sortie1, "sortie2_camions.csv": sortie2,
-                "bilan.csv": bilan.round({"Coût": 2, "Économie vs baseline": 2, "Économie (%)": 4, "Avance moyenne (j)": 2})}
+                "bilan.csv": bilan.round({"Coût": 2, "Économie vs baseline": 2, "Économie (%)": 4, "Avance moyenne (j)": 2}),
+                "alertes.csv": alertes}
     for nom_fichier, table in fichiers.items():
         table.to_csv(dossier / nom_fichier, index=False, date_format="%Y-%m-%d")
     return fichiers

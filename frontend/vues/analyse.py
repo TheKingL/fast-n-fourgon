@@ -259,15 +259,14 @@ with vue:
             "Avance moyenne (j)": st.column_config.NumberColumn(format="%.2f")})
 
 with profils:
-    usines = st.multiselect("Usines", sorted(r.sortie1["usine"].unique()), placeholder="Toutes les usines")
-    s1 = r.sortie1[r.sortie1["usine"].isin(usines)] if usines else r.sortie1
+    usines = st.multiselect("Usines", sorted(r.sortie1["Usine"].unique()), placeholder="Toutes les usines")
+    s1 = r.sortie1[r.sortie1["Usine"].isin(usines)] if usines else r.sortie1
     st.dataframe(s1, hide_index=True, height=520, column_config={
-        "fournisseur": "Fournisseur", "usine": "Usine",
-        "distance_km": st.column_config.NumberColumn("Distance", format="%d km"),
-        "livraisons_semaine_actuelles": st.column_config.NumberColumn("Livraisons / sem. actuelles", format="%.2f"),
-        "frequence_cible": st.column_config.NumberColumn("Jours fixes", format="%d / sem."),
-        "jours": "Jours", "camions_semaine": st.column_config.NumberColumn("Camions / sem.", format="%.2f"),
-        "remplissage_poids": st.column_config.ProgressColumn("Remplissage poids", format="percent",
+        "Distance": st.column_config.NumberColumn(format="%d km"),
+        "Livraisons / sem. actuelles": st.column_config.NumberColumn(format="%.2f"),
+        "Fréquence cible": st.column_config.NumberColumn("Jours fixes", format="%d / sem."),
+        "Camions / sem.": st.column_config.NumberColumn(format="%.2f"),
+        "Remplissage poids": st.column_config.ProgressColumn(format="percent",
                                                              min_value=0, max_value=1)})
     st.download_button("Télécharger la sortie 1", r.sortie1.to_csv(index=False), "sortie1_profils.csv",
                        "text/csv", icon=":material/download:")
@@ -282,9 +281,9 @@ with camions:
     contenu_camion = r.sortie2[r.sortie2["camion_id"] == choisi]
     st.dataframe(contenu_camion.drop(columns=["camion_id", "usine", "fournisseur", "date_livraison", "jour", "reserve"]),
                  hide_index=True, height=min(38 * len(contenu_camion) + 40, 420), column_config={
-                     "quantite": st.column_config.NumberColumn("Quantité", format="localized"),
-                     "poids_kg": st.column_config.ProgressColumn("Poids (kg)", format="%.1f", min_value=0,
-                                                                 max_value=float(contenu_camion["poids_kg"].max() or 1))})
+                     "Quantité": st.column_config.NumberColumn(format="localized"),
+                     "Poids (kg)": st.column_config.ProgressColumn(format="%.1f", min_value=0,
+                                                                   max_value=float(contenu_camion["Poids (kg)"].max() or 1))})
     camions_planning = r.planning_complet.assign(remplissage=r.planning_complet["poids"] / POIDS_MAX)
     with st.expander(f"Tous les camions ({len(camions_planning)})", icon=":material/list:"):
         st.dataframe(camions_planning[["camion_id", "plant", "supplier_id", "date", "jour", "jours_fixes", "nb_lignes",
@@ -353,6 +352,18 @@ with contraintes:
     c_contraintes.dataframe(r.controle_contraintes.reset_index(), hide_index=True, column_config={
         "Remarque": st.column_config.TextColumn(width="large")})
     c_validation.dataframe(r.validation.reset_index(), hide_index=True)
+    section(f"Alertes à notifier ({len(r.alertes)})", "cas où une règle ne peut pas être respectée")
+    if r.alertes.empty:
+        st.caption("Aucune alerte.")
+    else:
+        st.html("".join(pastille(f"{regle} : {n} cas", "info")
+                        for regle, n in r.alertes["regle"].value_counts().sort_index().items()))
+        st.dataframe(r.alertes, hide_index=True, column_config={
+            "regle": "Règle", "usine": "Usine", "fournisseur": "Fournisseur",
+            "date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
+            "camions": st.column_config.NumberColumn("Camions", format="%d"),
+            "cause": st.column_config.TextColumn("Cause", width="large"),
+            "a_faire": st.column_config.TextColumn("À faire", width="large")})
 
 with qualite:
     q1, q2 = st.columns([1, 1], gap="medium")

@@ -40,7 +40,7 @@ def charges_choix(scenarios: Scenarios, choix: Choix, fond: Charges | None = Non
         fond: charge de départ de chaque usine ; celle des camions réservés (``charge_reservee``) par défaut.
 
     Returns:
-        La charge de chaque usine (hors camions de démarrage, camions réservés compris).
+        La charge de chaque usine (camions réservés compris).
     """
     fond = charge_reservee() if fond is None else fond
     return {plant: fond[plant] + sum(scenarios.charge[(p, s, prof)] for (p, s), prof in choix.items() if p == plant)

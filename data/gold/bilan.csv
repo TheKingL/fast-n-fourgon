@@ -1,8 +1,10 @@
 Version,Camions,Coût,Économie vs baseline,Économie (%),Avance moyenne (j),Semaines hors tolérance (sur 20)
 Baseline,1741,177320.53,0.0,0.0,,12
 Algorithme de base (sans jours fixes),692,109513.22,67807.31,0.3824,2.97,20
-1 jour fixe,745,113364.79,63955.74,0.3607,3.43,20
-1 jour fixe + lissage,767,114481.31,62839.22,0.3544,3.55,5
-1 ou 2 jours fixes,707,110748.18,66572.35,0.3754,3.27,20
-1 ou 2 jours fixes + lissage,736,112265.09,65055.44,0.3669,3.33,4
-1 ou 2 jours fixes + lissage + report,736,112194.92,65125.61,0.3673,3.18,4
+1 jour fixe,766,115085.8,62234.73,0.351,3.97,20
+1 jour fixe + lissage,787,116329.48,60991.05,0.344,3.98,2
+1 ou 2 jours fixes,766,115085.8,62234.73,0.351,3.97,20
+1 ou 2 jours fixes + lissage,787,116332.01,60988.52,0.3439,3.95,2
+1 à 3 jours fixes,766,115085.8,62234.73,0.351,3.97,20
+1 à 3 jours fixes + lissage,787,116332.01,60988.52,0.3439,3.95,2
+1 ou 2 jours fixes + lissage + report,787,116117.5,61203.03,0.3452,3.67,2
