@@ -1,4 +1,4 @@
-camion_id,usine,fournisseur,date_livraison,jour,material,quai,besoins,nb_lignes,quantite,poids_kg,reserve
+camion_id,usine,fournisseur,date_livraison,jour,Material,Quai,Besoins regroupés,nb_lignes,Quantité,Poids (kg),reserve
 1,PLT_001,SUP_00092,2026-11-03,Mardi,MAT_000868,ULP_0001,2026-11-09,1,10000.0,11.1,False
 2,PLT_001,SUP_00148,2026-11-03,Mardi,MAT_001206,ULP_0004,2026-11-09,1,4000.0,317.8,False
 3,PLT_001,SUP_00149,2026-11-03,Mardi,MAT_000363,ULP_0012,2026-11-09,1,500.0,232.5,False

@@ -130,13 +130,9 @@ def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]
         "cout_final": eur, "economie": eur, "economie_pct": pourcent}))
 
     print(f"\n=== Sortie 1 : le profil à appliquer pour chaque couple ({len(r.sortie1)} couples, aperçu des 10 premiers) ===")
-    print(r.sortie1.head(10).rename(columns={
-        "fournisseur": "Fournisseur", "usine": "Usine", "distance_km": "Distance",
-        "livraisons_semaine_actuelles": "Livraisons / sem. actuelles", "frequence_cible": "Fréquence cible", "jours": "Jour",
-        "camions_semaine": "Camions / sem.", "remplissage_poids": "Remplissage poids"})
-        .to_string(index=False, formatters={
-            "Distance": lambda d: "inconnue" if pd.isna(d) else f"{d:.0f} km", "Livraisons / sem. actuelles": nombre,
-            "Fréquence cible": "{} / semaine".format, "Camions / sem.": nombre, "Remplissage poids": pourcent}))
+    print(r.sortie1.head(10).to_string(index=False, formatters={
+        "Distance": lambda d: "inconnue" if pd.isna(d) else f"{d:.0f} km", "Livraisons / sem. actuelles": nombre,
+        "Fréquence cible": "{} / semaine".format, "Camions / sem.": nombre, "Remplissage poids": pourcent}))
 
     resume, table_camion = sorties.detail_camion(r.sortie2, camion_detail)
     print(f"\n=== Sortie 2 : les materials regroupés dans chaque camion ({r.sortie2['camion_id'].nunique()} camions) ===")

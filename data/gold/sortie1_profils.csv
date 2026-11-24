@@ -1,4 +1,4 @@
-fournisseur,usine,distance_km,livraisons_semaine_actuelles,frequence_cible,jours,camions_semaine,remplissage_poids
+Fournisseur,Usine,Distance,Livraisons / sem. actuelles,Fréquence cible,Jours,Camions / sem.,Remplissage poids
 SUP_00003,PLT_001,83.0,1.75,1,Mardi,1.0,0.0073
 SUP_00005,PLT_001,46.0,1.0,1,Vendredi,1.0,0.0851
 SUP_00010,PLT_001,56.0,1.33,1,Mercredi,1.0,0.0005
