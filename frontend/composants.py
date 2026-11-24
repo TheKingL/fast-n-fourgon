@@ -60,6 +60,21 @@ def pastille(texte: str, genre: str = "info") -> str:
     return f'<span class="pastille {genre}">{icone} {escape(texte)}</span>'
 
 
+def tuile(valeur: str, texte: str, accent: bool = False) -> str:
+    """Tuile de chiffre clé (grande valeur et une ligne d'explication), en HTML pour ``st.html``.
+
+    Args:
+        valeur: le chiffre, déjà formaté.
+        texte: l'explication sous le chiffre.
+        accent: ``True`` pour la tuile mise en avant (fond orange).
+
+    Returns:
+        Le fragment HTML.
+    """
+    return (f'<div class="tuile{" accent" if accent else ""}"><div class="valeur">{escape(valeur)}</div>'
+            f'<div class="texte">{escape(texte)}</div></div>')
+
+
 def ecart_texte(ecart: float | None, unite: str = "") -> str | None:
     """Met en forme l'écart d'une carte KPI (``st.metric``), signe en tête pour le sens de la flèche.
 

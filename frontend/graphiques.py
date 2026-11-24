@@ -60,6 +60,7 @@ def _mise_en_page(fig: go.Figure, titre: str, hauteur: int = 340) -> go.Figure:
         hoverlabel={"bgcolor": "white", "bordercolor": GRILLE, "font": {"color": TEXTE}},
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.0, "xanchor": "right", "x": 1, "title": None},
         barcornerradius=4, bargap=0.3,
+        separators=", ",                          # format français : virgule décimale, espace des milliers
     )
     fig.update_xaxes(gridcolor=GRILLE, zeroline=False, linecolor=GRILLE, ticks="", automargin=True)
     fig.update_yaxes(gridcolor=GRILLE, zeroline=False, linecolor=GRILLE, ticks="", automargin=True)
@@ -406,13 +407,15 @@ def barres_ecarts(noms: Sequence[str], ecarts_pct: Sequence[float], effets: Sequ
     return _mise_en_page(fig, titre, max(240, 34 * len(noms) + 90))
 
 
-def savings_par_couple(sortie3: pd.DataFrame, nb: int = 15, par_semaine: bool = True) -> go.Figure:
+def savings_par_couple(sortie3: pd.DataFrame, nb: int = 15, par_semaine: bool = True,
+                       titre: str | None = None) -> go.Figure:
     """Coût de transport avant et après consolidation des couples qui économisent le plus (sortie 3).
 
     Args:
         sortie3: la sortie 3, triée par économie décroissante.
         nb: nombre de couples affichés.
         par_semaine: coût moyen par semaine (sinon coût sur toute la période).
+        titre: titre du graphique (par défaut, il décrit la sélection).
 
     Returns:
         Barres horizontales groupées : coût actuel en gris, coût après consolidation en bleu, le plus gros saving
@@ -432,5 +435,5 @@ def savings_par_couple(sortie3: pd.DataFrame, nb: int = 15, par_semaine: bool = 
     fig.update_layout(barmode="group", bargroupgap=0.06, bargap=0.28, legend_traceorder="reversed")
     fig.update_xaxes(ticksuffix=" €", separatethousands=True)
     fig.update_yaxes(showgrid=False)
-    titre = f"Coût de transport{' par semaine' if par_semaine else ''}, {len(s)} couples qui économisent le plus"
-    return _mise_en_page(fig, titre, max(340, 34 * len(s) + 90))
+    titre = titre or f"Coût de transport{' par semaine' if par_semaine else ''}, {len(s)} couples qui économisent le plus"
+    return _mise_en_page(fig, titre, max(380, 62 * len(s) + 110))

@@ -78,7 +78,7 @@ LIVRABLES: Final[dict[str, Livrable]] = {l.cle: l for l in [
         "camion_id": ("Camion", ENTIER), "usine": ("Usine", ""), "fournisseur": ("Fournisseur", ""),
         "date_livraison": ("Date de livraison", DATE), "jour": ("Jour", ""), "material": ("Material", ""),
         "quai": ("Quai", ""), "besoins": ("Besoins regroupés", ""), "nb_lignes": ("Lignes de besoin", ENTIER),
-        "quantite": ("Quantité", ENTIER), "poids_kg": ("Poids (kg)", DECIMAL), "reserve": ("Camion réservé", "")}),
+        "quantite": ("Quantité", ENTIER), "poids_kg": ("Poids (kg)", DECIMAL)}),
     Livrable("sortie3", "Sortie 3 · savings", "Sortie 3 - Savings", "sortie3_savings.csv", {
         "fournisseur": ("Fournisseur", ""), "usine": ("Usine", ""), "distance_km": ("Distance (km)", ENTIER),
         "camions_actuels": ("Camions actuels", ENTIER), "cout_actuel": ("Coût actuel", EUR),
@@ -104,8 +104,13 @@ def tables(r: Resultats) -> dict[str, pd.DataFrame]:
     Returns:
         Clé du livrable -> table (``synthese`` est le bilan des économies).
     """
-    return {"synthese": r.bilan, "sortie1": r.sortie1, "sortie2": r.sortie2,
+    return {"synthese": r.bilan, "sortie1": r.sortie1, "sortie2": sortie2(r),
             "sortie3": construire_sortie3(r.camions_base, r.planning_complet)}
+
+
+def sortie2(r: Resultats) -> pd.DataFrame:
+    """Sortie 2 telle qu'exportée et affichée : sans la colonne technique ``reserve``."""
+    return r.sortie2.drop(columns="reserve", errors="ignore")
 
 
 def par_usine(r: Resultats) -> pd.DataFrame:

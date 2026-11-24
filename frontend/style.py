@@ -165,6 +165,12 @@ h1, h2, h3 { letter-spacing: -0.015em; color: #0F1E2E; }
 .pastille.ko { background: #FBE7E7; color: #A12C2C; }
 .pastille.info { background: #E8F1FD; color: #184F95; }
 .note { color: #5B6B7C; font-size: 0.85rem; }
+.tuile { border-radius: 14px; padding: 1.1rem 1.3rem; margin-bottom: 0.8rem; background: #EEF4FA; color: #0F1E2E; }
+.tuile .valeur { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+.tuile .texte { font-size: 0.88rem; color: #3E4C5B; margin-top: 0.35rem; line-height: 1.4; }
+.tuile.accent { background: linear-gradient(135deg, #F28A4E, #EB6834); color: white;
+                box-shadow: 0 10px 24px -14px rgba(235, 104, 52, 0.9); }
+.tuile.accent .texte { color: rgba(255, 255, 255, 0.92); }
 </style>
 """
 

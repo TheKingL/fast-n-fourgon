@@ -9,7 +9,7 @@ from backend.config import DATA, POIDS_MAX
 from backend.formatage import eur, nombre, pourcent
 from backend.sorties import camion_le_plus_charge, construire_sortie3, detail_camion
 from frontend import comparaison, export, graphiques, historique, moteur
-from frontend.composants import carte, ecart_texte, hero, pastille, section
+from frontend.composants import carte, ecart_texte, hero, pastille, section, tuile
 
 SCHEDULE_PROJET = DATA / "bronze" / "released_schedule.csv"
 SEPARATEURS = {",": ",", ";": ";", "tab": "\t", "|": "|"}
@@ -228,7 +228,8 @@ vue, entree, profils, camions, savings, contraintes, qualite, comparer = st.tabs
      ":material/event_repeat: Profils (sortie 1)", ":material/local_shipping: Camions (sortie 2)",
      ":material/savings: Savings (sortie 3)",
      ":material/rule: Contraintes", ":material/fact_check: Qualité des données",
-     ":material/compare_arrows: Comparaison"])
+     ":material/compare_arrows: Comparaison"],
+    key="onglet_analyse", on_change="rerun")     # onglet suivi : un filtre modifié ne ramène pas au premier onglet
 
 with entree:
     apercu_schedule("apres")
@@ -279,7 +280,7 @@ with camions:
     resume, _ = detail_camion(r.sortie2, int(choisi))
     c_resume.html(pastille(resume, "info"))
     contenu_camion = r.sortie2[r.sortie2["camion_id"] == choisi]
-    st.dataframe(contenu_camion.drop(columns=["camion_id", "usine", "fournisseur", "date_livraison", "jour"]),
+    st.dataframe(contenu_camion.drop(columns=["camion_id", "usine", "fournisseur", "date_livraison", "jour", "reserve"]),
                  hide_index=True, height=min(38 * len(contenu_camion) + 40, 420), column_config={
                      "quantite": st.column_config.NumberColumn("Quantité", format="localized"),
                      "poids_kg": st.column_config.ProgressColumn("Poids (kg)", format="%.1f", min_value=0,
@@ -292,36 +293,55 @@ with camions:
                          "date": st.column_config.DateColumn(format="DD/MM/YYYY"),
                          "remplissage": st.column_config.ProgressColumn(format="percent", min_value=0, max_value=1),
                          "cout": st.column_config.NumberColumn("coût", format="%.2f €")})
-    st.download_button("Télécharger la sortie 2", r.sortie2.to_csv(index=False, date_format="%Y-%m-%d"),
+    st.download_button("Télécharger la sortie 2", export.sortie2(r).to_csv(index=False, date_format="%Y-%m-%d"),
                        "sortie2_camions.csv", "text/csv", icon=":material/download:")
 
 with savings:
+    semaines = sorted(pd.concat([r.camions_base["date"], r.planning_complet["date"]]).dt.to_period("W-SUN")
+                      .dt.start_time.unique())
     sortie3 = construire_sortie3(r.camions_base, r.planning_complet)
-    total_avant, total_apres = sortie3["cout_actuel_semaine"].sum(), sortie3["cout_apres_semaine"].sum()
-    gagnants = sortie3[sortie3["economie"] > 0]
-    s1_, s2_, s3_ = st.columns(3)
-    s1_.metric("Coût par semaine", eur(total_apres), f"{eur(total_apres - total_avant)} vs actuel",
-               delta_color="inverse", icon=":material/euro:", border=True)
-    s2_.metric("Économie par semaine", eur(total_avant - total_apres),
-               f"{pourcent((total_avant - total_apres) / total_avant)} du coût actuel", delta_color="off",
-               delta_arrow="off", icon=":material/savings:", border=True)
-    s3_.metric("Couples qui économisent", f"{len(gagnants)} / {len(sortie3)}",
-               f"meilleur : {sortie3['fournisseur'].iloc[0]} × {sortie3['usine'].iloc[0]}", delta_color="off",
-               delta_arrow="off", icon=":material/handshake:", border=True)
-    c_nb, c_periode, c_usines = st.columns([1, 1, 2], vertical_alignment="bottom")
-    nb_couples = c_nb.slider("Couples affichés", 5, min(40, len(sortie3)), min(15, len(sortie3)))
-    par_semaine = c_periode.toggle("Coût par semaine", value=True,
-                                   help="Moyenne par semaine du planning ; désactivé : coût sur toute la période.")
+    c_sem, c_nb, c_usines = st.columns([1, 1, 2], vertical_alignment="bottom")
+    semaine = c_sem.selectbox("Semaine", [None, *semaines], key="semaine_sortie3",
+                              format_func=lambda d: "Moyenne par semaine" if d is None else f"Semaine du {d:%d/%m/%Y}",
+                              help="Une semaine du planning (camions livrés cette semaine-là), ou la moyenne de "
+                                   "toutes les semaines.")
     usines_s3 = c_usines.multiselect("Usines", sorted(sortie3["usine"].unique()), placeholder="Toutes les usines",
                                      key="usines_sortie3")
-    s3 = sortie3[sortie3["usine"].isin(usines_s3)] if usines_s3 else sortie3
-    with carte("savings"):
-        graphiques.afficher(graphiques.savings_par_couple(s3, nb_couples, par_semaine))
-    st.dataframe(s3, hide_index=True, height=420, column_config={
-        col: (st.column_config.NumberColumn(titre, format="percent") if fmt == export.PCT
-              else st.column_config.NumberColumn(titre, format="%.2f €") if fmt == export.EUR
-              else st.column_config.NumberColumn(titre, format="%d") if fmt == export.ENTIER else titre)
-        for col, (titre, fmt) in export.LIVRABLES["sortie3"].colonnes.items()})
+    s3 = sortie3 if semaine is None else construire_sortie3(r.camions_base, r.planning_complet, pd.Timestamp(semaine))
+    if semaine is not None:                       # une seule semaine : le coût de la semaine est le coût total
+        s3 = s3.assign(cout_actuel_semaine=s3["cout_actuel"], cout_apres_semaine=s3["cout_apres"])
+    s3 = s3[s3["usine"].isin(usines_s3)] if usines_s3 else s3
+    nb_couples = c_nb.slider("Couples affichés", 1, max(min(40, len(s3)), 2), min(5, len(s3)), key="nb_sortie3")
+    if s3.empty:
+        st.caption("Aucun camion sur cette sélection.")
+    else:
+        quand = "par semaine en moyenne" if semaine is None else f"sur la semaine du {semaine:%d/%m}"
+        top = s3.head(nb_couples)
+        avant, apres = top["cout_actuel_semaine"].sum(), top["cout_apres_semaine"].sum()
+        meilleur = top.iloc[0]
+        diviseur = len(semaines) if semaine is None else 1     # en moyenne : camions ramenés à une semaine
+        n_avant, n_apres = meilleur["camions_actuels"] / diviseur, meilleur["camions_apres"] / diviseur
+        c_graphe, c_tuiles = st.columns([2.3, 1], gap="medium")
+        with carte("savings", c_graphe):
+            titre = "Coût de transport par semaine (moyenne)" if semaine is None else                 f"Coût de transport, semaine du {semaine:%d/%m}"
+            graphiques.afficher(graphiques.savings_par_couple(s3, nb_couples, True, titre))
+        with c_tuiles:
+            st.html(tuile(f"{pourcent(-(avant - apres) / avant) if avant else '–'}",
+                          f"coût des {len(top)} couples : {eur(avant)} → {eur(apres)} {quand}", accent=True)
+                    + tuile(eur(avant - apres), f"économisés {quand} pour {len(top)} couples")
+                    + tuile(eur(meilleur["cout_actuel_semaine"] - meilleur["cout_apres_semaine"]),
+                            f"{meilleur['fournisseur']} × {meilleur['usine']} : {nombre(round(n_avant, 1))} envoi(s) "
+                            f"({eur(meilleur['cout_actuel_semaine'])}) → {nombre(round(n_apres, 1))} envoi(s) "
+                            f"({eur(meilleur['cout_apres_semaine'])})"))
+            total_avant, total_apres = s3["cout_actuel_semaine"].sum(), s3["cout_apres_semaine"].sum()
+            st.html(pastille(f"tous les couples : {eur(total_avant)} → {eur(total_apres)}", "info")
+                    + pastille(f"{int((s3['economie'] > 0).sum())} / {len(s3)} couples économisent", "ok"))
+        with st.expander(f"Tableau de la sortie 3 ({len(s3)} couples)", icon=":material/table_chart:"):
+            st.dataframe(s3, hide_index=True, height=420, column_config={
+                col: (st.column_config.NumberColumn(titre_col, format="percent") if fmt == export.PCT
+                      else st.column_config.NumberColumn(titre_col, format="%.2f €") if fmt == export.EUR
+                      else st.column_config.NumberColumn(titre_col, format="%d") if fmt == export.ENTIER else titre_col)
+                for col, (titre_col, fmt) in export.LIVRABLES["sortie3"].colonnes.items()})
 
 with contraintes:
     dures = r.controle_contraintes[r.controle_contraintes["Type"] == "dure"]

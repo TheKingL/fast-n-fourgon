@@ -145,7 +145,8 @@ def construire_sortie2(lignes_complet: pd.DataFrame, planning_complet: pd.DataFr
 # =====================================================================================================
 # Sortie 3 : le saving potentiel par couple
 # =====================================================================================================
-def construire_sortie3(camions_base: pd.DataFrame, planning_complet: pd.DataFrame) -> pd.DataFrame:
+def construire_sortie3(camions_base: pd.DataFrame, planning_complet: pd.DataFrame,
+                       semaine: pd.Timestamp | None = None) -> pd.DataFrame:
     """Construit la sortie 3 : le coût de transport avant et après consolidation, couple par couple.
 
     Les camions réservés (poids ou volume inconnu) sont comptés des deux côtés, comme dans le bilan.
@@ -153,6 +154,8 @@ def construire_sortie3(camions_base: pd.DataFrame, planning_complet: pd.DataFram
     Args:
         camions_base: camions de la baseline, hors réservés (une ligne par camion).
         planning_complet: planning final, camions réservés compris (colonne ``reserve``).
+        semaine: lundi d'une semaine pour ne garder que les camions livrés cette semaine-là ; None (défaut) pour
+            toute la période. Les couples sans camion sur la semaine sont absents.
 
     Returns:
         Une ligne par couple : ``fournisseur``, ``usine``, ``distance_km`` (NaN = inconnue), ``camions_actuels``,
@@ -163,6 +166,12 @@ def construire_sortie3(camions_base: pd.DataFrame, planning_complet: pd.DataFram
     reserves = planning_complet[planning_complet["reserve"]]
     base = pd.concat([camions_base[["plant", "supplier_id", "date", "cout"]],
                       reserves[["plant", "supplier_id", "date", "cout"]]], ignore_index=True)
+    if semaine is not None:
+        def dans_semaine(dates: pd.Series) -> pd.Series:
+            """Dates comprises dans la semaine choisie."""
+            return (dates >= semaine) & (dates < semaine + pd.Timedelta(days=7))
+        base = base[dans_semaine(base["date"])]
+        planning_complet = planning_complet[dans_semaine(planning_complet["date"])]
     cles = ["plant", "supplier_id"]
     avant = base.groupby(cles).agg(camions_actuels=("cout", "size"), cout_actuel=("cout", "sum"))
     apres = planning_complet.groupby(cles).agg(camions_apres=("cout", "size"), cout_apres=("cout", "sum"))
