@@ -7,8 +7,7 @@ import pandas as pd
 from .charge import nb_hors_tolerance
 from .config import JOURS, POIDS_MAX, SORTIE
 from .couts import distance_brute
-from .donnees import (CONTROLE, COUT_BASELINE, COUT_RESERVE, IDS_ATTENDUS, NB_RESERVE, USINES, avec_reserves, besoins,
-                      camions_base)
+from . import donnees
 from .formatage import nombre, pourcent
 
 NB_AFFICHES: int = 10
@@ -31,16 +30,17 @@ def calculer_bilan(versions: dict[str, tuple[pd.DataFrame, pd.DataFrame | None]]
         Une ligne par version : ``Version``, ``Camions``, ``Coût``, ``Économie vs baseline``, ``Économie (%)``,
         ``Avance moyenne (j)`` et le nombre de semaines hors tolérance.
     """
-    cout_baseline_total = COUT_BASELINE + COUT_RESERVE
-    col_hors = f"Semaines hors tolérance (sur {len(USINES) * len(CONTROLE)})"
+    d = donnees
+    cout_baseline_total = d.COUT_BASELINE + d.COUT_RESERVE
+    col_hors = f"Semaines hors tolérance (sur {len(d.USINES) * len(d.CONTROLE)})"
     return pd.DataFrame([{
         "Version": nom,
-        "Camions": len(c) + NB_RESERVE,
-        "Coût": c["cout"].sum() + COUT_RESERVE,
-        "Économie vs baseline": COUT_BASELINE - c["cout"].sum(),
-        "Économie (%)": (COUT_BASELINE - c["cout"].sum()) / cout_baseline_total,
+        "Camions": len(c) + d.NB_RESERVE,
+        "Coût": c["cout"].sum() + d.COUT_RESERVE,
+        "Économie vs baseline": d.COUT_BASELINE - c["cout"].sum(),
+        "Économie (%)": (d.COUT_BASELINE - c["cout"].sum()) / cout_baseline_total,
         "Avance moyenne (j)": np.nan if l is None else l["avance_jours"].mean(),
-        col_hors: nb_hors_tolerance(avec_reserves(c)),
+        col_hors: nb_hors_tolerance(d.avec_reserves(c)),
     } for nom, (c, l) in versions.items()])
 
 
@@ -54,7 +54,7 @@ def economies_par_usine(planning_complet: pd.DataFrame) -> pd.DataFrame:
         Une ligne par usine plus une ligne ``Total`` : ``camions_baseline``, ``cout_baseline``, ``camions_final``,
         ``cout_final``, ``economie`` (€) et ``economie_pct`` (proportion).
     """
-    base_u = avec_reserves(camions_base).groupby("plant").agg(camions_baseline=("cout", "size"), cout_baseline=("cout", "sum"))
+    base_u = donnees.avec_reserves(donnees.camions_base).groupby("plant").agg(camions_baseline=("cout", "size"), cout_baseline=("cout", "sum"))
     final_u = planning_complet.groupby("plant").agg(camions_final=("cout", "size"), cout_final=("cout", "sum"))
     par_usine = base_u.join(final_u)
     par_usine.loc["Total"] = par_usine.sum()
@@ -92,7 +92,7 @@ def construire_sortie1(planning: pd.DataFrame) -> pd.DataFrame:
         ``livraisons_semaine_actuelles`` (baseline), ``frequence_cible`` (nombre de jours fixes), ``jours``,
         ``camions_semaine`` et ``remplissage_poids`` (proportion de 24,5 t).
     """
-    livraisons_actuelles, _ = moyennes_par_semaine(camions_base)
+    livraisons_actuelles, _ = moyennes_par_semaine(donnees.camions_base)
     _, camions_semaine = moyennes_par_semaine(planning)
     par_couple = planning.groupby(["plant", "supplier_id"])
     sortie1 = pd.DataFrame({
@@ -108,7 +108,7 @@ def construire_sortie1(planning: pd.DataFrame) -> pd.DataFrame:
         ["fournisseur", "usine", "distance_km", "livraisons_semaine_actuelles", "frequence_cible", "jours",
          "camions_semaine", "remplissage_poids"]].sort_values(["usine", "fournisseur"]).reset_index(drop=True)
     assert sortie1[["fournisseur", "usine"]].duplicated().sum() == 0      # un profil par couple
-    assert len(sortie1) == besoins.groupby(["plant", "supplier_id"]).ngroups
+    assert len(sortie1) == donnees.besoins.groupby(["plant", "supplier_id"]).ngroups
     return sortie1
 
 
@@ -137,7 +137,7 @@ def construire_sortie2(lignes_complet: pd.DataFrame, planning_complet: pd.DataFr
     sortie2.insert(4, "jour", sortie2["date_livraison"].dt.day_of_week.map(dict(enumerate(JOURS))))
     sortie2["poids_kg"] = sortie2["poids_kg"].round(1)
     sortie2 = sortie2.sort_values(["camion_id", "poids_kg", "material"], ascending=[True, False, True]).reset_index(drop=True)
-    assert sortie2["nb_lignes"].sum() == len(IDS_ATTENDUS)                  # toutes les lignes de besoin
+    assert sortie2["nb_lignes"].sum() == len(donnees.IDS_ATTENDUS)          # toutes les lignes de besoin
     assert sortie2["camion_id"].nunique() == len(planning_complet)          # tous les camions
     return sortie2
 

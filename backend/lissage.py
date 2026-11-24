@@ -8,8 +8,8 @@ from typing import Any, TypedDict
 
 import pandas as pd
 
-from .charge import CHARGE_RESERVEE, hors_tolerance
-from .donnees import CONTROLE, USINES
+from . import donnees
+from .charge import charge_reservee, hors_tolerance
 from .jours_fixes import Scenarios, nom_profil
 from .typage import Charge, Charges, Choix, Profil
 
@@ -37,14 +37,14 @@ def charges_choix(scenarios: Scenarios, choix: Choix, fond: Charges | None = Non
     Args:
         scenarios: les scénarios de tous les couples.
         choix: profil retenu pour chaque couple.
-        fond: charge de départ de chaque usine ; ``CHARGE_RESERVEE`` (camions réservés) par défaut.
+        fond: charge de départ de chaque usine ; celle des camions réservés (``charge_reservee``) par défaut.
 
     Returns:
         La charge de chaque usine (hors camions de démarrage, camions réservés compris).
     """
-    fond = CHARGE_RESERVEE if fond is None else fond
+    fond = charge_reservee() if fond is None else fond
     return {plant: fond[plant] + sum(scenarios.charge[(p, s, prof)] for (p, s), prof in choix.items() if p == plant)
-            for plant in USINES}
+            for plant in donnees.USINES}
 
 
 def dispersion(charge: Charge) -> float:
@@ -56,7 +56,7 @@ def dispersion(charge: Charge) -> float:
     Returns:
         La somme, sur les semaines contrôlées, des carrés des écarts de chaque jour à la moyenne de sa semaine.
     """
-    charge = charge[CONTROLE]
+    charge = charge[donnees.CONTROLE]
     return float(((charge - charge.mean(axis=1, keepdims=True)) ** 2).sum())
 
 
@@ -84,7 +84,7 @@ def lisser_par_couple(scenarios: Scenarios, choix: Choix, plant: str, profils_va
     choix = dict(choix)
     charge = charges_choix(scenarios, choix, fond)[plant]
     journal: list[dict[str, Any]] = []
-    while hors_tolerance(charge[CONTROLE], seuil).any():
+    while hors_tolerance(charge[donnees.CONTROLE], seuil).any():
         dispersion_actuelle = dispersion(charge)
         meilleur: Changement | None = None
         for (p, s), prof in choix.items():
@@ -108,7 +108,7 @@ def lisser_par_couple(scenarios: Scenarios, choix: Choix, plant: str, profils_va
         charge = meilleur["charge"]
         journal.append({"plant": plant, "supplier_id": meilleur["supplier_id"], "de": nom_profil(meilleur["de"]),
                         "vers": nom_profil(meilleur["vers"]), "surcout": round(meilleur["surcout"], 2),
-                        "semaines_hors_tolerance_apres": int(hors_tolerance(charge[CONTROLE], seuil).sum())})
+                        "semaines_hors_tolerance_apres": int(hors_tolerance(charge[donnees.CONTROLE], seuil).sum())})
     return choix, journal
 
 
@@ -127,9 +127,10 @@ def lisser(scenarios: Scenarios, choix: Choix, profils_variante: Sequence[Profil
         ``(choix lissé, journal des changements de profil)``, voir ``lisser_par_couple``.
     """
     choix = dict(choix)
+    fond = charge_reservee() if fond is None else fond      # calculée une fois pour toutes les usines
     journal: list[dict[str, Any]] = []
-    for plant in USINES:
-        if hors_tolerance(charges_choix(scenarios, choix, fond)[plant][CONTROLE], seuil).any():
+    for plant in donnees.USINES:
+        if hors_tolerance(charges_choix(scenarios, choix, fond)[plant][donnees.CONTROLE], seuil).any():
             choix, journal_u = lisser_par_couple(scenarios, choix, plant, profils_variante, seuil, fond)
             journal += journal_u
     return choix, pd.DataFrame(journal)

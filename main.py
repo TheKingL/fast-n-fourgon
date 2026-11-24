@@ -2,6 +2,8 @@
 
 Le code du moteur est dans le package ``backend/`` (un module par étape) ; ce fichier enchaîne les étapes :
 
+0. entrée : les données du projet (``data/silver``, ``data/baseline``) ou un schedule brut, nettoyé
+   (milestone 1) puis comparé à sa baseline (milestone 2) ;
 1. jours fixes : chaque couple fournisseur × usine choisit ses 1 ou 2 jours de livraison les moins chers ;
 2. contrôle de l'équilibre des usines (C10) ;
 3. lissage : changements de profil au moindre surcoût jusqu'à ce que les semaines soient dans la tolérance ;
@@ -16,20 +18,25 @@ Sorties (écrites dans ``data/gold/``) :
 
 Lancement (depuis la racine du dépôt)::
 
-    python main.py            # détaille le camion qui regroupe le plus de lignes de besoin
-    python main.py <camion>   # détaille le camion choisi, par exemple python main.py 254
+    python main.py                          # données du projet ; détaille le camion le plus chargé en lignes
+    python main.py 254                      # détaille le camion n° 254
+    python main.py --schedule planning.csv  # nettoie et consolide un autre schedule brut
 
 Depuis un notebook ou un front end::
 
     import main
-    r = main.executer()       # calcule tout sans rien écrire ni afficher ; r est un backend.resultats.Resultats
+    r = main.executer()             # données du projet ; r est un backend.resultats.Resultats
+    r = main.executer(schedule)     # un schedule brut (DataFrame au format de released_schedule.csv)
 """
+import argparse
 import sys
 
 import pandas as pd
 
 from backend import config, donnees, sorties
+from backend.baseline import construire_baseline
 from backend.contraintes import valider
+from backend.nettoyage import nettoyer
 from backend.formatage import eur, nombre, pourcent
 from backend.jours_fixes import VARIANTES, Scenarios, algorithme_de_base
 from backend.lissage import lisser
@@ -38,15 +45,38 @@ from backend.resultats import Resultats
 from backend.typage import Choix
 
 
-def executer() -> Resultats:
+def charger_entree(schedule: pd.DataFrame | None = None) -> None:
+    """Prépare l'entrée du moteur.
+
+    Args:
+        schedule: schedule brut (format de ``released_schedule.csv``) ; None pour les données du projet.
+
+    Raises:
+        ValueError: si le schedule n'a pas les colonnes attendues ou aucune ligne de besoin.
+    """
+    if schedule is None:
+        donnees.charger_fichiers()
+        return
+    clean, quarantaine = nettoyer(schedule)                                  # milestone 1
+    donnees.charger(clean, quarantaine, construire_baseline(clean, quarantaine))  # milestone 2
+
+
+def executer(schedule: pd.DataFrame | None = None) -> Resultats:
     """Fait tourner tout le moteur, sans écrire de fichier ni afficher.
+
+    Args:
+        schedule: schedule brut à consolider ; None (par défaut) pour les données du projet.
 
     Returns:
         Tous les résultats : planning final, sorties 1 et 2, bilan, contrôles... (voir ``Resultats``).
 
     Raises:
+        ValueError: si le schedule n'est pas exploitable (voir ``charger_entree``).
         AssertionError: si le planning final est incohérent ou viole une contrainte dure.
     """
+    # ---------- Entrée : schedule nettoyé et sa baseline ----------
+    charger_entree(schedule)
+
     # ---------- Bloc 1 : jours fixes, profil le moins cher de chaque couple ----------
     scenarios = Scenarios()
     choix_initiaux = {nom: scenarios.choix_moins_cher(profils) for nom, profils in VARIANTES.items()}
@@ -86,6 +116,7 @@ def executer() -> Resultats:
         bilan=sorties.calculer_bilan(versions), par_usine=sorties.economies_par_usine(planning_complet),
         sortie1=sorties.construire_sortie1(planning),
         sortie2=sorties.construire_sortie2(lignes_complet, planning_complet),
+        quarantaine=donnees.quarantaine, camions_base=donnees.camions_base,
     )
 
 
@@ -139,15 +170,21 @@ def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]
 def main() -> None:
     """Point d'entrée en ligne de commande : calcule, écrit les CSV de sortie et affiche le résumé.
 
-    Argument optionnel : numéro du camion à détailler (par défaut, celui qui regroupe le plus de lignes).
+    Arguments optionnels : numéro du camion à détailler (par défaut, celui qui regroupe le plus de lignes) et
+    ``--schedule`` (un schedule brut à la place des données du projet).
     """
     if hasattr(sys.stdout, "reconfigure"):          # console Windows (accents)
         sys.stdout.reconfigure(encoding="utf-8")
+    parseur = argparse.ArgumentParser(description="Moteur de consolidation des livraisons")
+    parseur.add_argument("camion", nargs="?", type=int, help="numéro du camion à détailler")
+    parseur.add_argument("--schedule", help="schedule brut (CSV au format de data/bronze/released_schedule.csv)")
+    arguments = parseur.parse_args()
 
-    r = executer()
+    schedule = pd.read_csv(arguments.schedule, encoding="utf-8-sig") if arguments.schedule else None
+    r = executer(schedule)
     fichiers = sorties.exporter(r.sortie1, r.sortie2, r.bilan)
 
-    camion_detail = int(sys.argv[1]) if len(sys.argv) > 1 else sorties.camion_le_plus_charge(r.planning_complet)
+    camion_detail = arguments.camion if arguments.camion is not None else sorties.camion_le_plus_charge(r.planning_complet)
     assert camion_detail in set(r.sortie2["camion_id"]), f"camion {camion_detail} inconnu (1 à {r.sortie2['camion_id'].max()})"
     afficher(r, camion_detail, fichiers)
 

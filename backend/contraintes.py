@@ -12,7 +12,7 @@ import pandas as pd
 from .charge import charges_camions, ecart, hors_tolerance
 from .config import FENETRE, JOURS_FIXES_MAX, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion, cout_total
-from .donnees import CONTROLE, DEBUT, FIN, NB_RESERVE, SEMAINES, USINES, besoins
+from . import donnees
 
 
 def optimises(planning: pd.DataFrame) -> pd.DataFrame:
@@ -100,7 +100,7 @@ def c7_jours_ouvres(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFram
         Les camions du week-end ou hors de l'horizon.
     """
     d = planning["date"]
-    return planning[(d.dt.day_of_week >= 5) | (d < DEBUT) | (d > FIN)]
+    return planning[(d.dt.day_of_week >= 5) | (d < donnees.DEBUT) | (d > donnees.FIN)]
 
 
 def c8_jours_fixes(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
@@ -145,9 +145,9 @@ def c10_lissage(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
     lignes_hors = []
     for plant, charge in charges_camions(planning).items():
         hors = hors_tolerance(charge)
-        for w in CONTROLE:
+        for w in donnees.CONTROLE:
             if hors[w]:
-                lignes_hors.append({"plant": plant, "semaine": SEMAINES[w], "ecart": ecart(charge[w]),
+                lignes_hors.append({"plant": plant, "semaine": donnees.SEMAINES[w], "ecart": ecart(charge[w]),
                                     "camions_par_jour": charge[w].astype(int).tolist()})
     return pd.DataFrame(lignes_hors)
 
@@ -190,7 +190,7 @@ def verifier_contraintes(planning: pd.DataFrame, lignes: pd.DataFrame, ids_atten
             remarque = f"{int(violations['justifie'].sum())} cas inévitables (besoin d'un jour > 24,5 t)"
             violations = violations[~violations["justifie"]]
         if fonction is c10_lissage:
-            remarque = f"sur {len(USINES) * len(CONTROLE)} semaines contrôlées"
+            remarque = f"sur {len(donnees.USINES) * len(donnees.CONTROLE)} semaines contrôlées"
         nb = len(violations)
         statut = "respectée" if nb == 0 else ("violée" if type_c == "dure" else f"{nb} semaine(s) hors tolérance")
         resultats.append({"Contrainte": code_c, "Description": nom, "Type": type_c, "Violations": nb,
@@ -215,9 +215,10 @@ def valider_resultats(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFr
         "Chaque camion optimisé contient au moins une ligne": opti["camion_id"].isin(contenu.index).all(),
         "Poids de chaque camion = somme des poids de ses lignes": np.allclose(p["poids"], contenu.loc[p.index, "poids"]),
         "Volume de chaque camion = somme des volumes de ses lignes": np.allclose(p["volume"], contenu.loc[p.index, "volume"]),
-        "Poids total livré = poids total des besoins": np.isclose(lignes_opti["weight"].sum(), besoins["weight"].sum()),
-        "Un camion réservé par ligne sans poids": (lignes[lignes["reserve"]].groupby("camion_id").size() == 1).all()
-                                                   and planning["reserve"].sum() == NB_RESERVE,
+        "Poids total livré = poids total des besoins": np.isclose(lignes_opti["weight"].sum(),
+                                                                       donnees.besoins["weight"].sum()),
+        "Un camion réservé par ligne sans poids ou sans volume": (lignes[lignes["reserve"]].groupby("camion_id").size() == 1).all()
+                                                   and planning["reserve"].sum() == donnees.NB_RESERVE,
         "Coût de chaque camion = grille tarifaire": np.allclose(
             planning["cout"], [cout_camion(w, s) for w, s in zip(planning["poids"], planning["supplier_id"])]),
         "Coût total = somme des coûts des camions": np.isclose(planning["cout"].sum(), cout_total(planning)),

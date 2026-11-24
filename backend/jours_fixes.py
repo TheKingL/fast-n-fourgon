@@ -12,7 +12,7 @@ import pandas as pd
 from .charge import charge_depuis_camions
 from .config import FENETRE, JOURS, JOURS_FIXES_MAX, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion
-from .donnees import DEBUT, besoins
+from . import donnees
 from .typage import Charge, Choix, CleScenario, Profil
 
 PROFILS: list[Profil] = [(j,) for j in range(5)] + list(itertools.combinations(range(5), JOURS_FIXES_MAX))
@@ -62,7 +62,7 @@ def date_camion(besoin: pd.Timestamp, profil: Profil) -> tuple[pd.Timestamp, boo
         ``(date du camion, True si c'est un camion de démarrage)``.
     """
     date = max(besoin - pd.Timedelta(days=(besoin.day_of_week - j) % 7) for j in profil)
-    return (besoin, True) if date < DEBUT else (date, False)
+    return (besoin, True) if date < donnees.DEBUT else (date, False)
 
 
 def consolider_couple(lignes: pd.DataFrame, profil: Profil) -> pd.DataFrame:
@@ -108,7 +108,7 @@ def algorithme_de_base() -> pd.DataFrame:
         de ``consolider_couple``.
     """
     morceaux = []
-    for (plant, supplier), lignes_couple in besoins.groupby(["plant", "supplier_id"]):
+    for (plant, supplier), lignes_couple in donnees.besoins.groupby(["plant", "supplier_id"]):
         morceaux.append(consolider_couple(lignes_couple, REFERENCE).assign(plant=str(plant), supplier_id=str(supplier)))
     camions_algo = pd.concat(morceaux, ignore_index=True)
     camions_algo["profil"] = [REFERENCE] * len(camions_algo)
@@ -132,9 +132,9 @@ class Scenarios:
     """
 
     def __init__(self) -> None:
-        """Consolide chaque couple de ``besoins`` pour chacun des ``PROFILS``."""
+        """Consolide chaque couple de ``donnees.besoins`` pour chacun des ``PROFILS``."""
         self.camions: dict[CleScenario, pd.DataFrame] = {}
-        for (plant, supplier), lignes_couple in besoins.groupby(["plant", "supplier_id"]):
+        for (plant, supplier), lignes_couple in donnees.besoins.groupby(["plant", "supplier_id"]):
             plant, supplier = str(plant), str(supplier)
             for profil in PROFILS:
                 camions = consolider_couple(lignes_couple, profil)

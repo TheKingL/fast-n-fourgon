@@ -28,6 +28,8 @@ class Resultats:
         par_usine: économies par usine, avec une ligne ``Total``.
         sortie1: profil à appliquer pour chaque couple.
         sortie2: materials chargés dans chaque camion.
+        quarantaine: lignes mises en quarantaine au nettoyage, avec leurs ``flags``.
+        camions_base: camions de la baseline (hors camions réservés), avec leur coût.
     """
 
     scenarios: Scenarios
@@ -46,3 +48,5 @@ class Resultats:
     par_usine: pd.DataFrame
     sortie1: pd.DataFrame
     sortie2: pd.DataFrame
+    quarantaine: pd.DataFrame
+    camions_base: pd.DataFrame

@@ -6,7 +6,7 @@ import pandas as pd
 
 from .config import JOURS, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion
-from .donnees import besoins, camions_reserves, lignes_reserves
+from . import donnees
 from .jours_fixes import Scenarios, nom_profil
 from .typage import Choix, Profil
 
@@ -68,6 +68,7 @@ def reporter_lignes(camions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         ``(camions après report, journal)`` ; le journal a une ligne par couple (``lignes_reportees``,
         ``camions_en_moins``, ``gain``, ``report_refuse_car_plus_cher``).
     """
+    besoins = donnees.besoins
     besoin, poids, volume = besoins["need_date"], besoins["weight"], besoins["volume"]
 
     def charge_ok(ls: list[int]) -> bool:
@@ -137,7 +138,7 @@ def finaliser(camions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     camions = camions.sort_values(["plant", "date", "supplier_id"]).reset_index(drop=True)
     camions["camion_id"] = range(1, len(camions) + 1)
     affectation = camions[["camion_id", "date", "lignes"]].explode("lignes").set_index("lignes")
-    lignes = besoins.join(affectation.rename(columns={"date": "date_livraison"}))
+    lignes = donnees.besoins.join(affectation.rename(columns={"date": "date_livraison"}))
     lignes["avance_jours"] = (lignes["need_date"] - lignes["date_livraison"]).dt.days
     lignes.insert(0, "id_ligne", "L" + lignes.index.astype(str))
     contenu = lignes.groupby("camion_id").agg(poids=("weight", "sum"), volume=("volume", "sum"),
@@ -160,6 +161,7 @@ def ajouter_reserves(planning: pd.DataFrame, lignes_planning: pd.DataFrame) -> t
         ``(planning complet, lignes complètes)``, avec la colonne ``reserve`` ; le planning a aussi
         les colonnes ``jour`` (nom du jour) et ``semaine`` (numéro ISO).
     """
+    camions_reserves, lignes_reserves = donnees.camions_reserves, donnees.lignes_reserves
     decalage = int(planning["camion_id"].max())
     reserves = camions_reserves.assign(camion_id=camions_reserves["numero"] + decalage, reserve=True, profil=None,
                                        jours_fixes="réservé : " + camions_reserves["motif"])

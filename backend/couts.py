@@ -68,12 +68,14 @@ def cout_camion(poids: float, supplier_id: str) -> float:
 
     Args:
         poids: poids chargé, en kg ; NaN pour un camion réservé (poids inconnu -> ``POIDS_PAR_DEFAUT``).
-        supplier_id: identifiant du fournisseur (sa distance est lue dans ``distances``).
+        supplier_id: identifiant du fournisseur (sa distance est lue dans ``distances`` ; un fournisseur absent
+            du fichier des distances est chiffré à ``DISTANCE_PAR_DEFAUT``).
 
     Returns:
         Le prix du camion en €.
     """
-    return cout_transport(POIDS_PAR_DEFAUT if pd.isna(poids) else poids, distances[supplier_id])
+    return cout_transport(POIDS_PAR_DEFAUT if pd.isna(poids) else poids,
+                          distances.get(supplier_id, DISTANCE_PAR_DEFAUT))
 
 
 def cout_total(planning: pd.DataFrame) -> float:

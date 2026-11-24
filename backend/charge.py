@@ -8,7 +8,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from .config import MIN_CAMIONS_SEMAINE, SEUIL_LISSAGE
-from .donnees import CONTROLE, NB_SEMAINES, SEMAINES, USINES, camions_reserves
+from . import donnees
 from .typage import Charge, Charges
 
 
@@ -21,7 +21,7 @@ def case(date: pd.Timestamp) -> tuple[int, int]:
     Returns:
         ``(position de la semaine dans SEMAINES, jour de la semaine)``, 0 = lundi.
     """
-    return SEMAINES.index(date.isocalendar().week), date.day_of_week
+    return donnees.SEMAINES.index(date.isocalendar().week), date.day_of_week
 
 
 def charge_depuis_camions(camions: pd.DataFrame, plant: str) -> Charge:
@@ -36,9 +36,9 @@ def charge_depuis_camions(camions: pd.DataFrame, plant: str) -> Charge:
     Returns:
         La charge de l'usine : une ligne par semaine, une colonne par jour (lundi -> vendredi).
     """
-    charge = np.zeros((NB_SEMAINES, 5))
+    charge = np.zeros((donnees.NB_SEMAINES, 5))
     for d in camions.loc[camions["plant"] == plant, "date"]:
-        if d.isocalendar().week in SEMAINES and d.day_of_week < 5:
+        if d.isocalendar().week in donnees.SEMAINES and d.day_of_week < 5:
             charge[case(d)] += 1
     return charge
 
@@ -52,7 +52,7 @@ def charges_camions(camions: pd.DataFrame) -> Charges:
     Returns:
         La charge de chaque usine de ``USINES``.
     """
-    return {plant: charge_depuis_camions(camions, plant) for plant in USINES}
+    return {plant: charge_depuis_camions(camions, plant) for plant in donnees.USINES}
 
 
 def ecart(charge_jours: npt.ArrayLike) -> float:
@@ -99,8 +99,13 @@ def nb_hors_tolerance(camions: pd.DataFrame) -> int:
     Returns:
         Le nombre de couples (usine, semaine) hors tolérance.
     """
-    return sum(int(hors_tolerance(charge[CONTROLE]).sum()) for charge in charges_camions(camions).values())
+    return sum(int(hors_tolerance(charge[donnees.CONTROLE]).sum()) for charge in charges_camions(camions).values())
 
 
-CHARGE_RESERVEE: Charges = charges_camions(camions_reserves)
-"""Charge des camions réservés : fixe, le lissage ne peut pas la déplacer."""
+def charge_reservee() -> Charges:
+    """Calcule la charge des camions réservés : fixe, le lissage ne peut pas la déplacer.
+
+    Returns:
+        La charge de chaque usine due aux seuls camions réservés.
+    """
+    return charges_camions(donnees.camions_reserves)

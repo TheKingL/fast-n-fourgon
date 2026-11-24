@@ -25,6 +25,16 @@ DISTANCES_PATH: Final[Path] = DATA / "bronze" / "distances.csv"
 """Distance de chaque fournisseur, en km."""
 SORTIE: Final[Path] = DATA / "gold"
 """Dossier où sont écrits les fichiers de sortie."""
+SCHEDULE_BRONZE_PATH: Final[Path] = DATA / "bronze" / "released_schedule.csv"
+"""Schedule brut du projet (entrée du nettoyage du milestone 1)."""
+
+# ---------- Nettoyage (milestone 1) ----------
+DATES_EXCLUES: Final[list[str]] = ["2027-01-01"]
+"""Dates de besoin retirées au nettoyage : le 1er janvier 2027 regroupe les besoins anticipés du mois suivant
+(rapport Data Quality du milestone 1), ce n'est pas un vrai jour de livraison."""
+COLONNES_SCHEDULE: Final[list[str]] = ["date", "supplier_id", "material", "plant", "unloading_point",
+                                       "schedule_quantity", "weight", "volume"]
+"""Colonnes obligatoires d'un schedule brut (format de ``released_schedule.csv``)."""
 
 # ---------- Paramètres du moteur ----------
 POIDS_MAX: Final[float] = 24500

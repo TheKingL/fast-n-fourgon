@@ -17,9 +17,14 @@ pip install -r requirements.txt
 Depuis la racine du dépôt :
 
 ```powershell
-python main.py          # calcule, écrit les sorties dans data/gold/ et affiche le résumé
-python main.py 254      # idem, en détaillant le camion n° 254
+python main.py                          # calcule, écrit les sorties dans data/gold/ et affiche le résumé
+python main.py 254                      # idem, en détaillant le camion n° 254
+python main.py --schedule planning.csv  # nettoie et consolide un autre schedule brut
 ```
+
+Sans `--schedule`, le moteur lit les fichiers déjà préparés par les notebooks (`data/silver`, `data/baseline`).
+Avec `--schedule`, il fait tout le chemin depuis le fichier brut : nettoyage, baseline, consolidation.
+Sur `data/bronze/released_schedule.csv`, les deux donnent exactement les mêmes résultats.
 
 Fichiers écrits dans `data/gold/` :
 
@@ -28,6 +33,27 @@ Fichiers écrits dans `data/gold/` :
 | `sortie1_profils.csv` | le profil de livraison (jours fixes) à appliquer pour chaque couple |
 | `sortie2_camions.csv` | les materials chargés dans chaque camion |
 | `bilan.csv` | les économies de chaque étape du moteur par rapport à la baseline |
+
+## Dashboard (Streamlit)
+
+Double-clic sur `lancer_dashboard.bat`, ou depuis la racine du dépôt :
+
+```powershell
+streamlit run frontend/app.py
+```
+
+Deux pages :
+
+- **Analyse** : on choisit un schedule (celui du projet ou un CSV importé), on lance le moteur, on voit les
+  résultats (coût, économie, camions, charge des usines, sorties 1 et 2, contraintes) et l'écart avec le dernier
+  run ; « Enregistrer dans l'historique » garde le run ;
+- **Historique** : évolution des métriques run après run (avec un mode base 100), comparaison de deux runs,
+  journal, fichiers de chaque run.
+
+Le moteur tourne sur le schedule choisi : nettoyage (milestone 1), baseline (milestone 2), puis consolidation.
+Un CSV importé doit avoir les colonnes de `data/bronze/released_schedule.csv`. Le résultat d'un même fichier est
+gardé en cache tant que le serveur tourne. Les runs sont gardés dans `data/historique/` (local à chaque poste,
+ignoré par git).
 
 ## Structure
 
@@ -38,7 +64,9 @@ backend/
   typage.py        alias de types : Profil, Couple, Choix, Charge...
   formatage.py     mise en forme des nombres (format français)
   couts.py         grille tarifaire, distances, coût d'un camion
-  donnees.py       besoins à consolider, camions réservés, baseline, horizon du planning
+  nettoyage.py     milestone 1 : schedule brut -> lignes saines + quarantaine (flags)
+  baseline.py      milestone 2 : camions de la situation actuelle (la référence des économies)
+  donnees.py       entrée du moteur : besoins à consolider, camions réservés, baseline, horizon (charger())
   charge.py        camions reçus par jour et par usine, tolérance de lissage
   contraintes.py   vérification des contraintes C1 à C10 et cohérence du planning
   jours_fixes.py   bloc 1 : consolidation de chaque couple pour chaque profil (classe Scenarios)
@@ -46,6 +74,17 @@ backend/
   report.py        bloc 4 : report sur le jour fixe suivant, planning final
   sorties.py       bilan, sortie 1, sortie 2, export CSV
   resultats.py     dataclass Resultats, retournée par main.executer()
+frontend/          dashboard Streamlit
+  app.py           point d'entrée et navigation
+  vues/            les deux pages : analyse.py, historique.py
+  moteur.py        lecture du schedule, appel du moteur, métriques d'un run
+  historique.py    historisation des runs (data/historique/)
+  comparaison.py   comparaison des métriques de deux runs
+  graphiques.py    graphiques Plotly
+  composants.py    bandeau, titres de section, pastilles
+  style.py         palette et feuille de style
+.streamlit/        thème du dashboard
+lancer_dashboard.bat  lancement du dashboard
 data/              bronze (brut), silver (nettoyé), baseline, gold (sorties)
 data_analysis/     notebooks des milestones 1 à 4 (milestone4 = tests du moteur)
 ```
@@ -59,7 +98,8 @@ Toutes les fonctions sont typées et documentées : leur docstring décrit les p
 ```python
 import main
 
-r = main.executer()        # environ 8 secondes : à appeler une fois puis à réutiliser
+r = main.executer()        # données du projet ; environ 8 secondes : à appeler une fois puis à réutiliser
+r = main.executer(df)      # un schedule brut (DataFrame au format de released_schedule.csv)
 r.planning_complet         # une ligne par camion (date, usine, fournisseur, poids, coût...)
 r.lignes_complet           # une ligne par ligne de besoin livrée (camion, date de livraison, avance)
 r.sortie1, r.sortie2       # les deux sorties

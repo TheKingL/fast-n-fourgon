@@ -230,3 +230,5 @@ test.ipynb
 
 # temp pptx file
 ~$Presentation_cours_projet_consolidation_livraisons.pptx
+# historique des runs du dashboard (local à chaque poste)
+data/historique/

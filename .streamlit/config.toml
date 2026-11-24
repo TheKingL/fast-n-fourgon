@@ -1,0 +1,19 @@
+[theme]
+base = "light"
+primaryColor = "#2A78D6"
+backgroundColor = "#F4F8FC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F1E2E"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+baseRadius = "12px"
+borderColor = "#E3EBF3"
+showWidgetBorder = true
+
+[server]
+maxUploadSize = 200
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
