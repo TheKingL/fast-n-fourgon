@@ -1,49 +1,65 @@
 """Moteur de consolidation des livraisons : flux d'exécution principal.
 
-Le code du moteur est dans le package consolidation/ (un module par étape) ; ce fichier enchaîne les étapes :
-  1. jours fixes : chaque couple fournisseur × usine choisit ses 1 ou 2 jours de livraison les moins chers ;
-  2. contrôle de l'équilibre des usines (C10) ;
-  3. lissage : changements de profil au moindre surcoût jusqu'à ce que les semaines soient dans la tolérance ;
-  4. report des lignes sur le jour fixe suivant, puis planning final ;
-  5. validation des contraintes, bilan des économies, sorties.
+Le code du moteur est dans le package ``backend/`` (un module par étape) ; ce fichier enchaîne les étapes :
 
-Sorties (écrites dans data/gold/) :
-  - sortie 1, sortie1_profils.csv : le profil à appliquer pour chaque couple (aperçu dans la console) ;
-  - sortie 2, sortie2_camions.csv : les materials regroupés dans chaque camion (détail d'un camion dans la console) ;
-  - bilan.csv : tableau des économies (baseline vs chaque étape du moteur), aussi affiché dans la console.
+1. jours fixes : chaque couple fournisseur × usine choisit ses 1 ou 2 jours de livraison les moins chers ;
+2. contrôle de l'équilibre des usines (C10) ;
+3. lissage : changements de profil au moindre surcoût jusqu'à ce que les semaines soient dans la tolérance ;
+4. report des lignes sur le jour fixe suivant, puis planning final ;
+5. validation des contraintes, bilan des économies, sorties.
 
-Lancement : python main.py            (détaille le camion qui regroupe le plus de lignes de besoin)
-            python main.py <camion>   (détaille le camion choisi, par exemple python main.py 254)
+Sorties (écrites dans ``data/gold/``) :
 
-Depuis un notebook : import main ; r = main.executer()   (calcule tout sans rien écrire ni afficher)
+- sortie 1, ``sortie1_profils.csv`` : le profil à appliquer pour chaque couple (aperçu dans la console) ;
+- sortie 2, ``sortie2_camions.csv`` : les materials regroupés dans chaque camion (détail d'un camion dans la console) ;
+- ``bilan.csv`` : tableau des économies (baseline vs chaque étape du moteur), aussi affiché dans la console.
+
+Lancement (depuis la racine du dépôt)::
+
+    python main.py            # détaille le camion qui regroupe le plus de lignes de besoin
+    python main.py <camion>   # détaille le camion choisi, par exemple python main.py 254
+
+Depuis un notebook ou un front end::
+
+    import main
+    r = main.executer()       # calcule tout sans rien écrire ni afficher ; r est un backend.resultats.Resultats
 """
 import sys
-from types import SimpleNamespace
 
 import pandas as pd
 
-from consolidation import config, donnees, sorties
-from consolidation.contraintes import valider
-from consolidation.formatage import eur, nombre, pourcent
-from consolidation.jours_fixes import VARIANTES, Scenarios, algorithme_de_base
-from consolidation.lissage import lisser
-from consolidation.report import ajouter_reserves, construire_planning, finaliser, reporter_lignes
+from backend import config, donnees, sorties
+from backend.contraintes import valider
+from backend.formatage import eur, nombre, pourcent
+from backend.jours_fixes import VARIANTES, Scenarios, algorithme_de_base
+from backend.lissage import lisser
+from backend.report import ajouter_reserves, construire_planning, finaliser, reporter_lignes
+from backend.resultats import Resultats
+from backend.typage import Choix
 
 
-def executer():
-    """Fait tourner tout le moteur et retourne ses résultats (sans écrire de fichier ni afficher)."""
+def executer() -> Resultats:
+    """Fait tourner tout le moteur, sans écrire de fichier ni afficher.
+
+    Returns:
+        Tous les résultats : planning final, sorties 1 et 2, bilan, contrôles... (voir ``Resultats``).
+
+    Raises:
+        AssertionError: si le planning final est incohérent ou viole une contrainte dure.
+    """
     # ---------- Bloc 1 : jours fixes, profil le moins cher de chaque couple ----------
     scenarios = Scenarios()
     choix_initiaux = {nom: scenarios.choix_moins_cher(profils) for nom, profils in VARIANTES.items()}
 
     # ---------- Blocs 2 et 3 : contrôle de l'équilibre des usines et lissage ----------
-    choix_lisses, journaux = {}, {}
+    choix_lisses: dict[str, Choix] = {}
+    journaux: dict[str, pd.DataFrame] = {}
     for nom, profils in VARIANTES.items():
         choix_lisses[nom], journaux[nom] = lisser(scenarios, choix_initiaux[nom], profils)
     principale = min(VARIANTES, key=lambda nom: scenarios.cout_choix(choix_lisses[nom]))   # la moins chère après lissage
 
     # ---------- Bloc 4 : report et planning final (planning de chaque étape, pour le bilan) ----------
-    plannings = {}
+    plannings: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
     for nom in VARIANTES:
         plannings[nom] = finaliser(construire_planning(scenarios, choix_initiaux[nom]))
         plannings[f"{nom} + lissage"] = finaliser(construire_planning(scenarios, choix_lisses[nom]))
@@ -56,22 +72,31 @@ def executer():
     controle_contraintes, validation = valider(planning_complet, lignes_complet, donnees.IDS_ATTENDUS)
 
     # ---------- Bilan et sorties ----------
-    versions = {"Baseline": (donnees.camions_base, None), "Algorithme de base (sans jours fixes)": finaliser(algorithme_de_base())}
+    versions: dict[str, tuple[pd.DataFrame, pd.DataFrame | None]] = {
+        "Baseline": (donnees.camions_base, None),
+        "Algorithme de base (sans jours fixes)": finaliser(algorithme_de_base()),
+    }
     versions.update(plannings)
-    sortie2 = sorties.construire_sortie2(lignes_complet, planning_complet)
 
-    return SimpleNamespace(
+    return Resultats(
         scenarios=scenarios, choix_initiaux=choix_initiaux, choix_lisses=choix_lisses, journaux=journaux,
         principale=principale, journal_report=journal_report, plannings=plannings,
         planning=planning, planning_complet=planning_complet, lignes_complet=lignes_complet,
         controle_contraintes=controle_contraintes, validation=validation,
         bilan=sorties.calculer_bilan(versions), par_usine=sorties.economies_par_usine(planning_complet),
-        sortie1=sorties.construire_sortie1(planning), sortie2=sortie2,
+        sortie1=sorties.construire_sortie1(planning),
+        sortie2=sorties.construire_sortie2(lignes_complet, planning_complet),
     )
 
 
-def afficher(r, camion_detail, fichiers):
-    """Résumé du moteur dans la console."""
+def afficher(r: Resultats, camion_detail: int, fichiers: dict[str, pd.DataFrame]) -> None:
+    """Affiche le résumé du moteur dans la console.
+
+    Args:
+        r: résultats du moteur.
+        camion_detail: numéro du camion dont on affiche le contenu.
+        fichiers: fichiers écrits, nom -> table (voir ``sorties.exporter``).
+    """
     besoins = donnees.besoins
     print(f"Besoins à consolider : {len(besoins)} lignes, {besoins.groupby(['plant', 'supplier_id']).ngroups} couples, "
           f"{len(donnees.USINES)} usines, du {donnees.DEBUT:%d/%m} au {donnees.FIN:%d/%m}")
@@ -111,15 +136,18 @@ def afficher(r, camion_detail, fichiers):
         print(f"  {nom_fichier:<22}: {len(table)} lignes")
 
 
-def main():
+def main() -> None:
+    """Point d'entrée en ligne de commande : calcule, écrit les CSV de sortie et affiche le résumé.
+
+    Argument optionnel : numéro du camion à détailler (par défaut, celui qui regroupe le plus de lignes).
+    """
     if hasattr(sys.stdout, "reconfigure"):          # console Windows (accents)
         sys.stdout.reconfigure(encoding="utf-8")
 
     r = executer()
     fichiers = sorties.exporter(r.sortie1, r.sortie2, r.bilan)
 
-    camion_detail = (int(sys.argv[1]) if len(sys.argv) > 1
-                     else int(r.planning_complet.loc[r.planning_complet["nb_lignes"].idxmax(), "camion_id"]))
+    camion_detail = int(sys.argv[1]) if len(sys.argv) > 1 else sorties.camion_le_plus_charge(r.planning_complet)
     assert camion_detail in set(r.sortie2["camion_id"]), f"camion {camion_detail} inconnu (1 à {r.sortie2['camion_id'].max()})"
     afficher(r, camion_detail, fichiers)
 
