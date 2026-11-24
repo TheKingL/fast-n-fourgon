@@ -1,7 +1,7 @@
 # Moteur de consolidation des livraisons
 
 Le moteur regroupe les livraisons de chaque couple fournisseur × usine dans le moins de camions possible :
-1 ou 2 jours fixes de livraison par semaine, au plus 24,5 t et 110,4 m³ par camion, jamais de retard,
+1 à 3 jours fixes de livraison par semaine (respectés dès le premier jour du planning), au plus 24,5 t et 110,4 m³ par camion, jamais de retard,
 au plus 7 jours d'avance, et une charge équilibrée sur les jours de la semaine pour chaque usine.
 
 ## Installation

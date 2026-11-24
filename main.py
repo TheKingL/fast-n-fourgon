@@ -2,7 +2,8 @@
 
 Le code du moteur est dans le package ``backend/`` (un module par étape) ; ce fichier enchaîne les étapes :
 
-1. jours fixes : chaque couple fournisseur × usine choisit ses 1 ou 2 jours de livraison les moins chers ;
+1. jours fixes : chaque couple fournisseur × usine choisit ses 1 à 3 jours de livraison les moins chers, dès le
+   début du planning (pas de camion hors jours fixes) ;
 2. contrôle de l'équilibre des usines (C10) ;
 3. lissage : changements de profil au moindre surcoût jusqu'à ce que les semaines soient dans la tolérance ;
 4. report des lignes sur le jour fixe suivant, puis planning final ;

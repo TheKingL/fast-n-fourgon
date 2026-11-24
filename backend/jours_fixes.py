@@ -1,7 +1,8 @@
 """Bloc 1 : jours fixes.
 
-Chaque couple fournisseur × usine est consolidé pour chacun des 15 profils possibles
-(1 jour fixe : 5 profils ; 2 jours fixes : 10 profils). On garde ensuite, par couple, le profil le moins cher.
+Chaque couple fournisseur × usine est consolidé pour chacun des 25 profils possibles
+(1 jour fixe : 5 profils ; 2 jours fixes : 10 profils ; 3 jours fixes : 10 profils). On garde ensuite, par couple,
+le profil le moins cher parmi ceux qui respectent les jours fixes dès le début du planning (aucun camion de démarrage).
 """
 import itertools
 from collections.abc import Sequence
@@ -15,11 +16,13 @@ from .couts import cout_camion
 from .donnees import DEBUT, besoins
 from .typage import Charge, Choix, CleScenario, Profil
 
-PROFILS: list[Profil] = [(j,) for j in range(5)] + list(itertools.combinations(range(5), JOURS_FIXES_MAX))
-"""Les 15 profils de jours fixes : ``(0,)`` ... ``(4,)``, puis ``(0, 1)`` ... ``(3, 4)``."""
+PROFILS: list[Profil] = [p for n in range(1, JOURS_FIXES_MAX + 1) for p in itertools.combinations(range(5), n)]
+"""Les 25 profils de jours fixes : ``(0,)`` ... ``(4,)``, puis ``(0, 1)`` ... ``(3, 4)``, puis ``(0, 1, 2)`` ... ``(2, 3, 4)``."""
 REFERENCE: Profil = (0, 1, 2, 3, 4)
 """Profil de l'algorithme de base du milestone 2 (sans jours fixes) : livraison possible les 5 jours."""
-VARIANTES: dict[str, list[Profil]] = {"1 jour fixe": [p for p in PROFILS if len(p) == 1], "1 ou 2 jours fixes": PROFILS}
+VARIANTES: dict[str, list[Profil]] = {"1 jour fixe": [p for p in PROFILS if len(p) == 1],
+                                      "1 ou 2 jours fixes": [p for p in PROFILS if len(p) <= 2],
+                                      "1 à 3 jours fixes": PROFILS}
 """Variantes du moteur comparées dans le bilan : nom -> profils autorisés."""
 
 
@@ -52,7 +55,8 @@ def date_camion(besoin: pd.Timestamp, profil: Profil) -> tuple[pd.Timestamp, boo
     """Choisit le jour de départ du camion qui livre un besoin.
 
     C'est le dernier jour fixe du profil avant ou égal au besoin. S'il tombe avant le début de l'horizon,
-    le camion part le jour du besoin : c'est un camion de démarrage.
+    le camion partirait le jour du besoin, hors des jours fixes : c'est un camion de démarrage. Un profil qui
+    en crée un n'est jamais retenu (voir ``Scenarios.autorises``).
 
     Args:
         besoin: date du besoin.
@@ -127,8 +131,9 @@ class Scenarios:
             avec la colonne ``cout`` en plus).
         cout: coût total de chaque scénario, en €.
         nb_camions: nombre de camions de chaque scénario.
-        charge: charge de l'usine due à chaque scénario, hors camions de démarrage.
+        charge: charge de l'usine due à chaque scénario.
         max_jour: nombre maximal de camions un même jour pour chaque scénario.
+        demarrage: nombre de camions de démarrage (hors jours fixes) de chaque scénario.
     """
 
     def __init__(self) -> None:
@@ -144,13 +149,17 @@ class Scenarios:
         self.cout: dict[CleScenario, float] = {cle: c["cout"].sum() for cle, c in self.camions.items()}
         self.nb_camions: dict[CleScenario, int] = {cle: len(c) for cle, c in self.camions.items()}
         self.charge: dict[CleScenario, Charge] = {
-            (p, s, prof): charge_depuis_camions(c[~c["demarrage"]].assign(plant=p), p)   # hors démarrage
-            for (p, s, prof), c in self.camions.items()}
+            (p, s, prof): charge_depuis_camions(c.assign(plant=p), p) for (p, s, prof), c in self.camions.items()}
         self.max_jour: dict[CleScenario, int] = {
             cle: int(c.groupby("date").size().max()) for cle, c in self.camions.items()}
+        self.demarrage: dict[CleScenario, int] = {cle: int(c["demarrage"].sum()) for cle, c in self.camions.items()}
 
     def autorises(self, plant: str, supplier: str, profils_variante: Sequence[Profil]) -> list[Profil]:
-        """Donne les profils qui ne mettent jamais 2 camions le même jour à un couple (C9).
+        """Donne les profils autorisés pour un couple : jours fixes dès le début (C8) et 1 camion par jour (C9).
+
+        Un profil qui crée un camion de démarrage (un besoin du début du planning qui tombe avant le premier
+        jour fixe) est toujours exclu : les camions partent uniquement les jours fixes. Comme l'horizon commence
+        un lundi, le profil « lundi » seul convient toujours, donc il reste au moins un profil.
 
         Args:
             plant: code de l'usine.
@@ -158,11 +167,13 @@ class Scenarios:
             profils_variante: profils autorisés par la variante.
 
         Returns:
-            Les profils de la variante qui respectent C9 ; si aucun ne le permet (besoin d'un seul jour > 24,5 t),
-            tous les profils de la variante.
+            Les profils de la variante sans camion de démarrage qui respectent C9 ; si aucun ne respecte C9
+            (besoin d'un seul jour > 24,5 t), tous les profils de la variante sans camion de démarrage.
         """
-        ok = [p for p in profils_variante if self.max_jour[(plant, supplier, p)] <= 1]
-        return ok if ok else list(profils_variante)
+        sans_demarrage = [p for p in profils_variante if self.demarrage[(plant, supplier, p)] == 0]
+        assert sans_demarrage, f"aucun profil sans camion de démarrage pour {plant} / {supplier}"
+        ok = [p for p in sans_demarrage if self.max_jour[(plant, supplier, p)] <= 1]
+        return ok if ok else sans_demarrage
 
     def choix_moins_cher(self, profils_variante: Sequence[Profil]) -> Choix:
         """Choisit le profil le moins cher de chaque couple parmi les profils autorisés.

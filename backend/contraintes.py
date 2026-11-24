@@ -104,18 +104,17 @@ def c7_jours_ouvres(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFram
 
 
 def c8_jours_fixes(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
-    """C8 : chaque couple a 1 ou 2 jours fixes, et ses camions partent un de ces jours.
+    """C8 : chaque couple a 1 à 3 jours fixes, et tous ses camions partent un de ces jours.
 
-    Les camions de démarrage (première semaine, avant le premier jour fixe) sont tolérés hors profil.
+    Aucune exception, y compris au début du planning : un camion de démarrage est une violation.
 
     Returns:
         Les camions optimisés avec un profil invalide ou partis hors de leurs jours fixes.
     """
     p = optimises(planning)
     mauvais_profil = ~p["profil"].map(len).between(1, JOURS_FIXES_MAX)
-    hors_profil = np.array([not dem and d.day_of_week not in prof
-                            for d, prof, dem in zip(p["date"], p["profil"], p["demarrage"])], dtype=bool)
-    return p[mauvais_profil | hors_profil]
+    hors_profil = np.array([d.day_of_week not in prof for d, prof in zip(p["date"], p["profil"])], dtype=bool)
+    return p[mauvais_profil | hors_profil | p["demarrage"].astype(bool)]
 
 
 def c9_un_camion_par_jour(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
@@ -137,7 +136,7 @@ def c9_un_camion_par_jour(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.Da
 def c10_lissage(planning: pd.DataFrame, lignes: pd.DataFrame) -> pd.DataFrame:
     """C10 (souple) : aucun jour ne s'écarte de plus de 35 % de la moyenne de la semaine.
 
-    Tous les camions reçus sont comptés (démarrage et réservés compris).
+    Tous les camions reçus sont comptés (camions réservés compris).
 
     Returns:
         Les semaines hors tolérance, par usine (colonnes ``plant``, ``semaine``, ``ecart``, ``camions_par_jour``).
@@ -160,7 +159,7 @@ CONTRAINTES: list[tuple[str, str, str, Callable[..., pd.DataFrame]]] = [
     ("C5", "Jamais de retard", "dure", c5_retard),
     ("C6", "Au plus 7 jours d'avance", "dure", c6_avance),
     ("C7", "Jour ouvré, dans l'horizon", "dure", c7_jours_ouvres),
-    ("C8", "Jours fixes (1 ou 2 par couple)", "dure", c8_jours_fixes),
+    ("C8", "Jours fixes (1 à 3 par couple, sans exception)", "dure", c8_jours_fixes),
     ("C9", "Au plus 1 camion par couple et par jour", "dure", c9_un_camion_par_jour),
     ("C10", "Lissage (écart ≤ 35 %)", "souple", c10_lissage),
 ]
