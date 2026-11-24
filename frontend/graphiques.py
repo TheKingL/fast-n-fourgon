@@ -404,3 +404,33 @@ def barres_ecarts(noms: Sequence[str], ecarts_pct: Sequence[float], effets: Sequ
                                                             haut + (marge if haut > 0 else 0)])
     fig.update_yaxes(autorange="reversed", showgrid=False)
     return _mise_en_page(fig, titre, max(240, 34 * len(noms) + 90))
+
+
+def savings_par_couple(sortie3: pd.DataFrame, nb: int = 15, par_semaine: bool = True) -> go.Figure:
+    """Coût de transport avant et après consolidation des couples qui économisent le plus (sortie 3).
+
+    Args:
+        sortie3: la sortie 3, triée par économie décroissante.
+        nb: nombre de couples affichés.
+        par_semaine: coût moyen par semaine (sinon coût sur toute la période).
+
+    Returns:
+        Barres horizontales groupées : coût actuel en gris, coût après consolidation en bleu, le plus gros saving
+        en haut, l'économie en % au bout de la barre bleue.
+    """
+    s = sortie3.head(nb).iloc[::-1]
+    avant, apres = ("cout_actuel_semaine", "cout_apres_semaine") if par_semaine else ("cout_actuel", "cout_apres")
+    couples = [f"{f} × {u}" for f, u in zip(s["fournisseur"], s["usine"])]
+    # en barres horizontales groupées, la première trace est dessinée en bas : « après » d'abord, « actuel » au-dessus
+    fig = go.Figure([
+        go.Bar(name="Coût après consolidation", y=couples, x=s[apres], orientation="h", marker_color=BLEU,
+               text=[pourcent_signe(-p * 100) for p in s["economie_pct"].fillna(0)], textposition="outside",
+               cliponaxis=False, hovertemplate="%{y}<br>après : %{x:,.0f} €<extra></extra>"),
+        go.Bar(name="Coût actuel", y=couples, x=s[avant], orientation="h", marker_color=GRIS,
+               hovertemplate="%{y}<br>actuel : %{x:,.0f} €<extra></extra>"),
+    ])
+    fig.update_layout(barmode="group", bargroupgap=0.06, bargap=0.28, legend_traceorder="reversed")
+    fig.update_xaxes(ticksuffix=" €", separatethousands=True)
+    fig.update_yaxes(showgrid=False)
+    titre = f"Coût de transport{' par semaine' if par_semaine else ''}, {len(s)} couples qui économisent le plus"
+    return _mise_en_page(fig, titre, max(340, 34 * len(s) + 90))

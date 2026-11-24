@@ -45,8 +45,10 @@ streamlit run frontend/app.py
 Deux pages :
 
 - **Analyse** : on choisit un schedule (celui du projet ou un CSV importé), on lance le moteur, on voit les
-  résultats (coût, économie, camions, charge des usines, sorties 1 et 2, contraintes) et l'écart avec le dernier
-  run ; « Enregistrer dans l'historique » garde le run ;
+  résultats (coût, économie, camions, charge des usines, sorties 1, 2 et 3, contraintes) et l'écart avec le
+  dernier run ; « Exporter l'analyse » télécharge les trois sorties et la synthèse, en classeur Excel (une feuille
+  par sortie) ou en CSV zippés (format Excel français ou format `data/gold`) ; « Enregistrer dans
+  l'historique » garde le run ;
 - **Historique** : évolution des métriques run après run (avec un mode base 100), comparaison de deux runs,
   journal, fichiers de chaque run.
 
@@ -72,7 +74,7 @@ backend/
   jours_fixes.py   bloc 1 : consolidation de chaque couple pour chaque profil (classe Scenarios)
   lissage.py       blocs 2 et 3 : équilibre des usines et lissage
   report.py        bloc 4 : report sur le jour fixe suivant, planning final
-  sorties.py       bilan, sortie 1, sortie 2, export CSV
+  sorties.py       bilan, sortie 1, sortie 2, sortie 3 (saving par couple), export CSV
   resultats.py     dataclass Resultats, retournée par main.executer()
 frontend/          dashboard Streamlit
   app.py           point d'entrée et navigation
@@ -80,6 +82,7 @@ frontend/          dashboard Streamlit
   moteur.py        lecture du schedule, appel du moteur, métriques d'un run
   historique.py    historisation des runs (data/historique/)
   comparaison.py   comparaison des métriques de deux runs
+  export.py        export des 3 sorties : classeur Excel ou CSV zippés
   graphiques.py    graphiques Plotly
   composants.py    bandeau, titres de section, pastilles
   style.py         palette et feuille de style

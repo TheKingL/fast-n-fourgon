@@ -7,8 +7,8 @@ import streamlit as st
 
 from backend.config import DATA, POIDS_MAX
 from backend.formatage import eur, nombre, pourcent
-from backend.sorties import camion_le_plus_charge, detail_camion
-from frontend import comparaison, graphiques, historique, moteur
+from backend.sorties import camion_le_plus_charge, construire_sortie3, detail_camion
+from frontend import comparaison, export, graphiques, historique, moteur
 from frontend.composants import carte, ecart_texte, hero, pastille, section
 
 SCHEDULE_PROJET = DATA / "bronze" / "released_schedule.csv"
@@ -197,10 +197,34 @@ kpi(k4, "Remplissage moyen", f"{nombre(m['remplissage poids moyen (%)'])} %", "r
 kpi(k5, "Avance moyenne", f"{nombre(m['avance moyenne (j)'])} j", "avance moyenne (j)", ":material/schedule:", "",
     hausse_favorable=False)
 
+# ---------- Export des livrables ----------
+nom_base = f"consolidation_{source.rsplit('.', 1)[0]}" if source else "consolidation"
+with carte("export"):
+    c_titre, c_choix, c_format, c_bouton = st.columns([1.1, 2.2, 1.6, 1], vertical_alignment="bottom", gap="medium")
+    c_titre.markdown("**Exporter l'analyse**  \n:gray[les 3 sorties du projet, en Excel ou en CSV]")
+    choix = c_choix.pills("Livrables", list(export.LIVRABLES), selection_mode="multi", key="export_livrables",
+                          default=list(export.LIVRABLES), format_func=lambda c: export.LIVRABLES[c].libelle,
+                          help="Synthèse : bilan des économies et économies par usine.")
+    format_export = c_format.segmented_control("Format", ["Excel (.xlsx)", "CSV (.zip)"], required=True,
+                                               default="Excel (.xlsx)", key="export_format", width="stretch")
+    if format_export == "CSV (.zip)":
+        excel_fr = c_format.toggle("CSV pour Excel français", value=True, key="export_excel_fr",
+                                   help="Séparateur « ; » et virgule décimale, lisibles directement par un Excel "
+                                        "français. Désactivé : séparateur « , » et point décimal (format de data/gold).")
+        donnees_export = lambda: export.archive_csv(r, choix, excel_fr)  # noqa: E731  (généré au clic)
+        fichier_export, type_export = f"{nom_base}.zip", "application/zip"
+    else:
+        donnees_export = lambda: export.classeur_excel(r, choix, source or "")  # noqa: E731
+        fichier_export = f"{nom_base}.xlsx"
+        type_export = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    c_bouton.download_button("Télécharger", donnees_export, fichier_export, type_export, type="primary",
+                             icon=":material/download:", disabled=not choix, width="stretch", on_click="ignore")
+
 # ---------- Onglets ----------
-vue, entree, profils, camions, contraintes, qualite, comparer = st.tabs(
+vue, entree, profils, camions, savings, contraintes, qualite, comparer = st.tabs(
     [":material/dashboard: Vue d'ensemble", ":material/input: Schedule d'entrée",
      ":material/event_repeat: Profils (sortie 1)", ":material/local_shipping: Camions (sortie 2)",
+     ":material/savings: Savings (sortie 3)",
      ":material/rule: Contraintes", ":material/fact_check: Qualité des données",
      ":material/compare_arrows: Comparaison"])
 
@@ -268,6 +292,34 @@ with camions:
                          "cout": st.column_config.NumberColumn("coût", format="%.2f €")})
     st.download_button("Télécharger la sortie 2", r.sortie2.to_csv(index=False, date_format="%Y-%m-%d"),
                        "sortie2_camions.csv", "text/csv", icon=":material/download:")
+
+with savings:
+    sortie3 = construire_sortie3(r.camions_base, r.planning_complet)
+    total_avant, total_apres = sortie3["cout_actuel_semaine"].sum(), sortie3["cout_apres_semaine"].sum()
+    gagnants = sortie3[sortie3["economie"] > 0]
+    s1_, s2_, s3_ = st.columns(3)
+    s1_.metric("Coût par semaine", eur(total_apres), f"{eur(total_apres - total_avant)} vs actuel",
+               delta_color="inverse", icon=":material/euro:", border=True)
+    s2_.metric("Économie par semaine", eur(total_avant - total_apres),
+               f"{pourcent((total_avant - total_apres) / total_avant)} du coût actuel", delta_color="off",
+               delta_arrow="off", icon=":material/savings:", border=True)
+    s3_.metric("Couples qui économisent", f"{len(gagnants)} / {len(sortie3)}",
+               f"meilleur : {sortie3['fournisseur'].iloc[0]} × {sortie3['usine'].iloc[0]}", delta_color="off",
+               delta_arrow="off", icon=":material/handshake:", border=True)
+    c_nb, c_periode, c_usines = st.columns([1, 1, 2], vertical_alignment="bottom")
+    nb_couples = c_nb.slider("Couples affichés", 5, min(40, len(sortie3)), min(15, len(sortie3)))
+    par_semaine = c_periode.toggle("Coût par semaine", value=True,
+                                   help="Moyenne par semaine du planning ; désactivé : coût sur toute la période.")
+    usines_s3 = c_usines.multiselect("Usines", sorted(sortie3["usine"].unique()), placeholder="Toutes les usines",
+                                     key="usines_sortie3")
+    s3 = sortie3[sortie3["usine"].isin(usines_s3)] if usines_s3 else sortie3
+    with carte("savings"):
+        graphiques.afficher(graphiques.savings_par_couple(s3, nb_couples, par_semaine))
+    st.dataframe(s3, hide_index=True, height=420, column_config={
+        col: (st.column_config.NumberColumn(titre, format="percent") if fmt == export.PCT
+              else st.column_config.NumberColumn(titre, format="%.2f €") if fmt == export.EUR
+              else st.column_config.NumberColumn(titre, format="%d") if fmt == export.ENTIER else titre)
+        for col, (titre, fmt) in export.LIVRABLES["sortie3"].colonnes.items()})
 
 with contraintes:
     dures = r.controle_contraintes[r.controle_contraintes["Type"] == "dure"]

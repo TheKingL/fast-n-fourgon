@@ -3,7 +3,7 @@
 - ``runs.csv`` : une ligne par run (identifiant, date, source, période planifiée, lignes, coût, économie, camions,
   durée) ;
 - ``metriques.csv`` : une ligne par (run, catégorie, métrique, valeur) ;
-- ``runs/<run_id>/`` : le schedule d'entrée et les sorties du run (sortie 1, sortie 2, bilan).
+- ``runs/<run_id>/`` : le schedule d'entrée et les sorties du run (sorties 1, 2 et 3, bilan).
 
 Pour passer à une base de données (SQLite, Postgres...), seul ce module change.
 """
@@ -17,6 +17,7 @@ import pandas as pd
 
 from backend.config import DATA
 from backend.resultats import Resultats
+from backend.sorties import construire_sortie3
 
 from .moteur import Metriques, periode
 
@@ -35,7 +36,9 @@ COLONNES_RUNS: Final[list[str]] = ["run_id", "horodatage", "source", "debut", "f
 COLONNES_METRIQUES: Final[list[str]] = ["run_id", "horodatage", "categorie", "metrique", "valeur"]
 """Colonnes de ``metriques.csv``."""
 FICHIERS_RUN: Final[dict[str, str]] = {"schedule.csv": "Schedule d'entrée", "sortie1_profils.csv": "Sortie 1 : profils",
-                                       "sortie2_camions.csv": "Sortie 2 : camions", "bilan.csv": "Bilan des économies"}
+                                       "sortie2_camions.csv": "Sortie 2 : camions",
+                                       "sortie3_savings.csv": "Sortie 3 : savings par couple",
+                                       "bilan.csv": "Bilan des économies"}
 """Fichiers gardés pour chaque run : nom -> libellé."""
 
 
@@ -78,6 +81,7 @@ def enregistrer_run(source: str, schedule: pd.DataFrame, r: Resultats, metriques
     schedule.to_csv(dossier / "schedule.csv", index=False, date_format="%Y-%m-%d")
     r.sortie1.to_csv(dossier / "sortie1_profils.csv", index=False)
     r.sortie2.to_csv(dossier / "sortie2_camions.csv", index=False, date_format="%Y-%m-%d")
+    construire_sortie3(r.camions_base, r.planning_complet).to_csv(dossier / "sortie3_savings.csv", index=False)
     r.bilan.to_csv(dossier / "bilan.csv", index=False)
     return run_id
 

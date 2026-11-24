@@ -142,6 +142,51 @@ def construire_sortie2(lignes_complet: pd.DataFrame, planning_complet: pd.DataFr
     return sortie2
 
 
+# =====================================================================================================
+# Sortie 3 : le saving potentiel par couple
+# =====================================================================================================
+def construire_sortie3(camions_base: pd.DataFrame, planning_complet: pd.DataFrame) -> pd.DataFrame:
+    """Construit la sortie 3 : le coût de transport avant et après consolidation, couple par couple.
+
+    Les camions réservés (poids ou volume inconnu) sont comptés des deux côtés, comme dans le bilan.
+
+    Args:
+        camions_base: camions de la baseline, hors réservés (une ligne par camion).
+        planning_complet: planning final, camions réservés compris (colonne ``reserve``).
+
+    Returns:
+        Une ligne par couple : ``fournisseur``, ``usine``, ``distance_km`` (NaN = inconnue), ``camions_actuels``,
+        ``cout_actuel``, ``camions_apres``, ``cout_apres``, ``economie`` (€), ``economie_pct`` (proportion),
+        ``cout_actuel_semaine`` et ``cout_apres_semaine`` (moyennes sur les semaines du planning) ;
+        triée par économie décroissante.
+    """
+    reserves = planning_complet[planning_complet["reserve"]]
+    base = pd.concat([camions_base[["plant", "supplier_id", "date", "cout"]],
+                      reserves[["plant", "supplier_id", "date", "cout"]]], ignore_index=True)
+    cles = ["plant", "supplier_id"]
+    avant = base.groupby(cles).agg(camions_actuels=("cout", "size"), cout_actuel=("cout", "sum"))
+    apres = planning_complet.groupby(cles).agg(camions_apres=("cout", "size"), cout_apres=("cout", "sum"))
+    sortie3 = avant.join(apres, how="outer").fillna(0).reset_index()
+    dates = pd.concat([base["date"], planning_complet["date"]])
+    nb_semaines = max(len(dates.dt.isocalendar()[["year", "week"]].drop_duplicates()), 1)
+
+    sortie3["economie"] = sortie3["cout_actuel"] - sortie3["cout_apres"]
+    sortie3["economie_pct"] = (sortie3["economie"] / sortie3["cout_actuel"].where(sortie3["cout_actuel"] > 0)).round(4)
+    sortie3["cout_actuel_semaine"] = sortie3["cout_actuel"] / nb_semaines
+    sortie3["cout_apres_semaine"] = sortie3["cout_apres"] / nb_semaines
+    for colonne in ("cout_actuel", "cout_apres", "economie", "cout_actuel_semaine", "cout_apres_semaine"):
+        sortie3[colonne] = sortie3[colonne].round(2)
+    for colonne in ("camions_actuels", "camions_apres"):
+        sortie3[colonne] = sortie3[colonne].astype(int)
+    sortie3.insert(2, "distance_km", sortie3["supplier_id"].map(distance_brute))
+    sortie3 = sortie3.rename(columns={"supplier_id": "fournisseur", "plant": "usine"})[
+        ["fournisseur", "usine", "distance_km", "camions_actuels", "cout_actuel", "camions_apres", "cout_apres",
+         "economie", "economie_pct", "cout_actuel_semaine", "cout_apres_semaine"]]
+    sortie3 = sortie3.sort_values(["economie", "usine", "fournisseur"], ascending=[False, True, True])
+    assert sortie3[["fournisseur", "usine"]].duplicated().sum() == 0      # un bilan par couple
+    return sortie3.reset_index(drop=True)
+
+
 def camion_le_plus_charge(planning_complet: pd.DataFrame) -> int:
     """Donne le camion qui regroupe le plus de lignes de besoin (le premier en cas d'égalité).
 

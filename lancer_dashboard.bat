@@ -7,7 +7,7 @@ if exist ".venv\Scripts\python.exe" (
 ) else (
     set "PY=python"
 )
-"%PY%" -m streamlit --version >nul 2>&1 || (
+"%PY%" -c "import streamlit, plotly, openpyxl" >nul 2>&1 || (
     echo Installation des dependances...
     "%PY%" -m pip install -r requirements.txt || exit /b 1
 )
