@@ -1,5 +1,5 @@
 # Config git partagée du projet. À activer une fois par personne :
-#   pip install -r requirements.txt
+#   pip install -r requirements-dev.txt
 #   nbstripout --install --attributes .gitattributes
 #   git config include.path ../.gitconfig
 # Les commandes git-nb* viennent du venv : lancer git pull/merge avec le venv activé.

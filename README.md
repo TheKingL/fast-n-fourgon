@@ -12,8 +12,12 @@ git clone git@github.com:TheKingL/fast-n-fourgon.git
 cd fast-n-fourgon
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+`requirements-dev.txt` installe l'application (`requirements.txt` : moteur et dashboard), plus les outils de tests, de
+lint et des notebooks. Pour seulement faire tourner l'application, `pip install -r requirements.txt` suffit : c'est ce
+qu'installent l'image Docker et `lancer_dashboard.bat`.
 
 ## Lancement
 
@@ -61,6 +65,18 @@ Un CSV importé doit avoir les colonnes de `data/bronze/released_schedule.csv`. 
 gardé en cache tant que le serveur tourne. Les runs sont gardés dans `data/historique/` (local à chaque poste,
 ignoré par git).
 
+## Tests et lint
+
+Depuis la racine du dépôt, avec `requirements-dev.txt` installé :
+
+```powershell
+pytest          # tests du moteur (dossier tests/), quelques secondes
+ruff check .    # lint du code Python (configuration dans pyproject.toml)
+```
+
+Les tests sont ceux du notebook `data_analysis/milestone4.ipynb` (lancés là-bas avec ipytest). Les notebooks ne sont
+pas lintés.
+
 ## Structure
 
 ```
@@ -94,6 +110,9 @@ frontend/          dashboard Streamlit
 lancer_dashboard.bat  lancement du dashboard
 data/              bronze (brut), silver (nettoyé), baseline, gold (sorties)
 data_analysis/     notebooks des milestones 1 à 4 (milestone4 = tests du moteur)
+tests/             les tests du milestone 4, pour pytest
+requirements.txt   dépendances de l'application ; requirements-dev.txt : tests, lint et notebooks en plus
+pyproject.toml     configuration de pytest et de ruff
 ```
 
 Toutes les fonctions sont typées et documentées : leur docstring décrit les paramètres et le résultat.
