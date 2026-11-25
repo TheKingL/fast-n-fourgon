@@ -1,5 +1,7 @@
 # Fast-n-Fourgon : moteur de consolidation des livraisons
 
+[![CI](https://github.com/TheKingL/fast-n-fourgon/actions/workflows/ci.yml/badge.svg)](https://github.com/TheKingL/fast-n-fourgon/actions/workflows/ci.yml)
+
 Le moteur regroupe les livraisons de chaque couple fournisseur × usine dans le moins de camions possible :
 1 à 3 jours fixes de livraison par semaine (un couple à 2 ou 3 jours livre au moins une semaine sur tous ses jours ;
 les premiers besoins peuvent partir dans la semaine qui précède le planning), au plus 24,5 t et 110,4 m³ par camion, jamais de retard,
@@ -112,6 +114,22 @@ ruff check .    # lint du code Python (configuration dans pyproject.toml)
 Les tests sont ceux du notebook `data_analysis/milestone4.ipynb` (lancés là-bas avec ipytest). Les notebooks ne sont
 pas lintés.
 
+## CI et releases
+
+Le workflow `.github/workflows/ci.yml` (GitHub Actions) tourne à chaque push sur `main` :
+
+1. **lint** : `ruff check .` et hadolint sur le `Dockerfile` ;
+2. **tests** : `pytest` ;
+3. **image** : construction de l'image, puis un smoke test avant toute publication. Le moteur tourne dans le conteneur,
+   `tests/smoke_image.py` déroule le dashboard (analyse du schedule du projet, exports, historique) et le serveur doit
+   répondre. L'image est ensuite publiée pour amd64 et arm64 sur
+   [ghcr.io/thekingl/fast-n-fourgon](https://github.com/TheKingL/fast-n-fourgon/pkgs/container/fast-n-fourgon), avec les
+   tags `latest`, `v1.0.<numéro du run>` et `sha-<commit>` ;
+4. **release** : une [release](https://github.com/TheKingL/fast-n-fourgon/releases) `v1.0.<numéro du run>` avec
+   l'image en archive pour chaque architecture (`docker load`) et leurs empreintes (`SHA256SUMS`).
+
+Sur une pull request vers `main`, seuls le lint et les tests tournent.
+
 ## Structure
 
 ```
@@ -145,11 +163,12 @@ frontend/          dashboard Streamlit
 lancer_dashboard.bat  lancement du dashboard
 data/              bronze (brut), silver (nettoyé), baseline, gold (sorties)
 data_analysis/     notebooks des milestones 1 à 4 (milestone4 = tests du moteur)
-tests/             les tests du milestone 4, pour pytest
+tests/             les tests du milestone 4 (pytest) et le smoke test de l'image Docker (smoke_image.py)
 requirements.txt   dépendances de l'application ; requirements-dev.txt : tests, lint et notebooks en plus
 pyproject.toml     configuration de pytest et de ruff
 Dockerfile         image Docker du dashboard ; .dockerignore : ce qui entre dans l'image
 compose.yaml       lancement de l'image avec docker compose (port 8501, volume de l'historique)
+.github/           CI (workflows/ci.yml) et modèle des notes de release
 ```
 
 Toutes les fonctions sont typées et documentées : leur docstring décrit les paramètres et le résultat.
