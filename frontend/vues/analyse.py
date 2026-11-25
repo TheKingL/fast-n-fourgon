@@ -5,6 +5,7 @@ import time
 import pandas as pd
 import streamlit as st
 
+from backend import couts
 from backend.config import DATA, POIDS_MAX
 from backend.formatage import eur, nombre, pourcent
 from backend.sorties import camion_le_plus_charge, construire_sortie3, detail_camion
@@ -53,7 +54,8 @@ if contenu is None:
             "avec le schedule du projet.</span></div>")
     st.stop()
 
-empreinte = hashlib.sha1(contenu + str(separateur).encode()).hexdigest()
+version_distances = moteur.version_distances()      # distances saisies dans l'onglet Mapping
+empreinte = hashlib.sha1(contenu + str(separateur).encode()).hexdigest() + version_distances
 try:
     schedule = moteur.lire_schedule(contenu, SEPARATEURS[str(separateur)])
 except Exception as erreur:  # fichier illisible : on l'explique au lieu de planter
@@ -78,7 +80,7 @@ if lancer:
         debut = time.perf_counter()
         statut.update(label="Nettoyage, baseline, jours fixes, lissage, report, validation…")
         try:
-            resultats = moteur.executer_moteur(contenu, SEPARATEURS[str(separateur)])
+            resultats = moteur.executer_moteur(contenu, SEPARATEURS[str(separateur)], version_distances)
         except (ValueError, AssertionError) as erreur:
             statut.update(label="Le moteur n'a pas pu traiter ce schedule", state="error")
             st.error(f"{erreur}", icon=":material/error:")
@@ -92,8 +94,12 @@ if lancer:
 
 analyse = st.session_state.get("analyse")
 if analyse is not None and analyse["empreinte"] != empreinte:
-    st.info("Le schedule a changé depuis la dernière analyse : relance l'analyse pour mettre les résultats à jour.",
-            icon=":material/refresh:")
+    if analyse["empreinte"][:40] == empreinte[:40]:
+        st.info("Des distances ont été complétées dans l'onglet Mapping : relance l'analyse pour en tenir compte.",
+                icon=":material/route:")
+    else:
+        st.info("Le schedule a changé depuis la dernière analyse : relance l'analyse pour mettre les résultats à "
+                "jour.", icon=":material/refresh:")
     analyse = None
 
 # =====================================================================================================
@@ -185,6 +191,15 @@ with st.container(horizontal=True, vertical_alignment="center", gap="medium"):
     else:
         etat = pastille(f"run {analyse['run_id']} enregistré", "ok")
     st.html(etat + pastille(f"variante retenue : {r.principale}", "info") + pastille(calcul, "info"))
+
+# Fournisseurs livrés sans distance : chiffrés au tarif maximal, à compléter dans l'onglet Mapping
+sans_distance = r.planning_complet[~r.planning_complet["supplier_id"].isin(
+    couts.distance_brute.index[couts.distance_brute.notna()])]
+if len(sans_distance):
+    with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+        st.html(pastille(f"{sans_distance['supplier_id'].nunique()} fournisseur(s) sans distance : "
+                         f"{eur(sans_distance['cout'].sum())} de transport chiffrés au tarif maximal", "ko"))
+        st.page_link("vues/mapping.py", label="Compléter les distances", icon=":material/route:")
 
 section("Résultats du moteur", f"économie mesurée par rapport à la baseline ({eur(m['coût baseline (€)'])}, "
                                f"{nombre(m['camions baseline'])} camions)")
@@ -377,10 +392,36 @@ with qualite:
         par_flag = (r.quarantaine["flags"].str.split("|").explode().value_counts()
                     if len(r.quarantaine) else pd.Series(dtype=int))
         if par_flag.empty:
-            st.caption("Aucune ligne en quarantaine.")
+            st.caption("Aucune ligne signalée.")
         else:
             graphiques.afficher(graphiques.lignes_par_flag(par_flag))
-    with st.expander(f"Lignes en quarantaine ({len(r.quarantaine)})", icon=":material/warning:"):
+    section("Qualité des données par fournisseur", "poids et volumes manquants : lignes impossibles à consolider")
+    qualite_f = moteur.qualite_par_fournisseur(schedule)
+    fautifs = qualite_f[qualite_f["lignes_incompletes"] > 0]
+    if fautifs.empty:
+        st.caption("Tous les fournisseurs renseignent le poids et le volume de leurs lignes.")
+    else:
+        st.html(pastille(f"{len(fautifs)} fournisseur(s) sur {len(qualite_f)} envoient des lignes incomplètes", "ko")
+                + pastille(f"{nombre(int(fautifs['lignes_incompletes'].sum()))} lignes incomplètes, chacune livrée "
+                           "seule dans un camion réservé", "info"))
+        c_graphe_q, c_table_q = st.columns([1, 1.25], gap="medium")
+        with carte("qualite-fournisseurs", c_graphe_q):
+            classement = c_graphe_q.segmented_control(
+                "Classer par", ["Nombre de lignes", "Taux"], default="Nombre de lignes", required=True,
+                key="qualite_classement", help="Taux : part des lignes du fournisseur qui sont incomplètes.")
+            graphiques.afficher(graphiques.qualite_fournisseurs(fautifs, par_taux=classement == "Taux"))
+        c_table_q.dataframe(fautifs, hide_index=True, height=470, column_config={
+            "fournisseur": "Fournisseur", "usines": "Usines",
+            "lignes": st.column_config.NumberColumn("Lignes", format="%d"),
+            "poids_manquants": st.column_config.NumberColumn("Poids manquants", format="%d"),
+            "volumes_manquants": st.column_config.NumberColumn("Volumes manquants", format="%d"),
+            "lignes_incompletes": st.column_config.NumberColumn("Lignes incomplètes", format="%d"),
+            "taux_incomplet": st.column_config.ProgressColumn("Taux incomplet", format="percent", min_value=0,
+                                                              max_value=1)})
+        c_table_q.download_button("Télécharger la liste des fournisseurs", fautifs.to_csv(index=False, sep=";",
+                                  decimal=",").encode("utf-8-sig"), "qualite_fournisseurs.csv", "text/csv",
+                                  icon=":material/download:")
+    with st.expander(f"Lignes signalées ({len(r.quarantaine)})", icon=":material/warning:"):
         st.dataframe(r.quarantaine, hide_index=True,
                      column_config={"need_date": st.column_config.DateColumn("besoin", format="DD/MM/YYYY")})
 

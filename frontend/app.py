@@ -23,6 +23,7 @@ page = st.navigation(
     [
         st.Page(DOSSIER_VUES / "analyse.py", title="Analyse", icon=":material/bolt:", default=True),
         st.Page(DOSSIER_VUES / "historique.py", title="Historique", icon=":material/monitoring:"),
+        st.Page(DOSSIER_VUES / "mapping.py", title="Mapping", icon=":material/route:", url_path="mapping"),
     ],
     position="top",
 )

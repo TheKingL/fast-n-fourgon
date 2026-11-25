@@ -102,6 +102,10 @@ def charger_runs() -> pd.DataFrame:
     return runs.sort_values("horodatage", ascending=False).reset_index(drop=True)
 
 
+ANCIENS_NOMS: Final[dict[str, str]] = {"lignes en quarantaine": "lignes signalées"}
+"""Métriques renommées : ancien nom -> nouveau (les runs enregistrés avant gardent l'ancien nom dans le fichier)."""
+
+
 def charger_metriques() -> pd.DataFrame:
     """Lit les métriques de tous les runs.
 
@@ -110,7 +114,9 @@ def charger_metriques() -> pd.DataFrame:
     """
     if not METRIQUES.exists():
         return pd.DataFrame(columns=COLONNES_METRIQUES).astype({"horodatage": "datetime64[ns]", "valeur": float})
-    return pd.read_csv(METRIQUES, parse_dates=["horodatage"])
+    metriques = pd.read_csv(METRIQUES, parse_dates=["horodatage"])
+    metriques["metrique"] = metriques["metrique"].replace(ANCIENS_NOMS)
+    return metriques
 
 
 def metriques_run(run_id: str) -> dict[str, float]:

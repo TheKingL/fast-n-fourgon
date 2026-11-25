@@ -6,15 +6,18 @@ baseline (milestone 2), puis consolidation (``main.executer``).
 Les métriques sont rangées par catégorie (``Schedule``, ``Coût``, ``Camions``, ``Service``) : ce sont elles
 qui sont historisées run après run et comparées d'un run à l'autre.
 """
+import hashlib
 import threading
+from datetime import datetime
 from io import BytesIO
 
 import pandas as pd
 import streamlit as st
 
 import main
-from backend.config import COLONNES_SCHEDULE, DATES_EXCLUES, POIDS_MAX, VOLUME_MAX
-from backend.nettoyage import verifier_colonnes
+from backend import couts
+from backend.config import COLONNES_SCHEDULE, DATES_EXCLUES, DISTANCES_SAISIES_PATH, POIDS_MAX, VOLUME_MAX
+from backend.nettoyage import nettoyer, verifier_colonnes
 from backend.resultats import Resultats
 
 Metriques = dict[str, dict[str, float]]
@@ -24,7 +27,8 @@ _VERROU = threading.Lock()
 """Le backend garde ses données d'entrée en mémoire (module ``donnees``) : un seul calcul à la fois."""
 
 __all__ = ["COLONNES_SCHEDULE", "Metriques", "lire_schedule", "colonnes_manquantes", "profil_schedule",
-           "executer_moteur", "etapes_nettoyage", "toutes_metriques", "aplatir"]
+           "executer_moteur", "version_distances", "etapes_nettoyage", "qualite_par_fournisseur", "table_mapping",
+           "enregistrer_mapping", "distances_completees", "toutes_metriques", "aplatir"]
 
 
 def lire_schedule(contenu: bytes, separateur: str = ",") -> pd.DataFrame:
@@ -74,15 +78,27 @@ def profil_schedule(schedule: pd.DataFrame) -> dict[str, float]:
     }
 
 
+def version_distances() -> str:
+    """Empreinte des distances saisies dans l'onglet Mapping (chaîne vide s'il n'y en a pas).
+
+    Elle fait partie de la clé du cache du moteur : après une saisie, la même analyse est recalculée.
+    """
+    if not DISTANCES_SAISIES_PATH.exists():
+        return ""
+    return hashlib.sha1(DISTANCES_SAISIES_PATH.read_bytes()).hexdigest()
+
+
 @st.cache_resource(show_spinner=False, max_entries=6)
-def executer_moteur(contenu: bytes, separateur: str) -> Resultats:
+def executer_moteur(contenu: bytes, separateur: str, distances: str = "") -> Resultats:
     """Nettoie le schedule, construit sa baseline et fait tourner le moteur.
 
-    Le résultat est gardé en cache pour ce contenu exact : relancer le même fichier est instantané.
+    Le résultat est gardé en cache pour ce contenu exact et ces distances : relancer le même fichier est
+    instantané.
 
     Args:
         contenu: contenu brut du fichier CSV.
         separateur: séparateur de colonnes.
+        distances: empreinte des distances saisies (``version_distances``), pour la clé du cache.
 
     Returns:
         Les résultats du moteur.
@@ -92,7 +108,118 @@ def executer_moteur(contenu: bytes, separateur: str) -> Resultats:
         AssertionError: si le planning obtenu viole une contrainte dure.
     """
     with _VERROU:
+        couts.charger_distances()          # relit les distances saisies (éventuellement par un autre utilisateur)
         return main.executer(lire_schedule(contenu, separateur))
+
+
+def qualite_par_fournisseur(schedule: pd.DataFrame) -> pd.DataFrame:
+    """Poids et volumes manquants, fournisseur par fournisseur (lignes gardées après nettoyage).
+
+    Un indicateur pour l'entreprise : une ligne sans poids ou sans volume ne peut pas être consolidée (elle part
+    seule, dans un camion réservé) ; les fournisseurs qui renseignent mal leurs envois coûtent donc plus cher.
+
+    Args:
+        schedule: schedule brut.
+
+    Returns:
+        Une ligne par fournisseur : ``fournisseur``, ``usines``, ``lignes``, ``poids_manquants``,
+        ``volumes_manquants``, ``lignes_incompletes`` (poids ou volume manquant) et ``taux_incomplet``
+        (proportion) ; triée par nombre de lignes incomplètes décroissant.
+    """
+    saines, signalees = nettoyer(schedule)
+    colonnes = ["supplier_id", "plant", "weight", "volume"]
+    lignes = pd.concat([saines[colonnes], signalees[colonnes]], ignore_index=True)
+    sans_poids, sans_volume = lignes["weight"].isna(), lignes["volume"].isna()
+    par_fournisseur = lignes.groupby("supplier_id")
+    t = pd.DataFrame({
+        "usines": par_fournisseur["plant"].agg(lambda p: ", ".join(sorted(p.unique()))),
+        "lignes": par_fournisseur.size(),
+        "poids_manquants": sans_poids.groupby(lignes["supplier_id"]).sum(),
+        "volumes_manquants": sans_volume.groupby(lignes["supplier_id"]).sum(),
+        "lignes_incompletes": (sans_poids | sans_volume).groupby(lignes["supplier_id"]).sum(),
+    })
+    t["taux_incomplet"] = (t["lignes_incompletes"] / t["lignes"]).round(4)
+    t = t.rename_axis("fournisseur").reset_index()
+    return t.sort_values(["lignes_incompletes", "taux_incomplet", "fournisseur"],
+                         ascending=[False, False, True]).reset_index(drop=True)
+
+
+def table_mapping(lignes: pd.DataFrame | None = None, planning: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Table de correspondance fournisseur -> distance, à compléter dans l'onglet Mapping.
+
+    Args:
+        lignes: lignes de besoin d'un schedule (``supplier_id``, ``plant``), pour les usines livrées et le nombre
+            de lignes de chaque fournisseur ; None : ces colonnes restent vides.
+        planning: planning d'une analyse (``supplier_id``, ``cout``), pour le coût de transport de chaque
+            fournisseur ; None : colonne vide.
+
+    Returns:
+        Une ligne par fournisseur (ceux du fichier des distances, des saisies et du schedule) : ``fournisseur``,
+        ``usines``, ``lignes``, ``cout``, ``distance_source`` (fichier source), ``distance`` (retenue : saisie si
+        elle existe, sinon source), ``statut`` et ``saisie_le`` ; les fournisseurs sans distance d'abord.
+    """
+    couts.charger_distances()
+    saisies = couts.lire_distances_saisies().set_index("supplier_id")
+    fournisseurs = set(couts.distances_source.index) | set(saisies.index)
+    if lignes is not None:
+        fournisseurs |= set(lignes["supplier_id"])
+    t = pd.DataFrame(index=pd.Index(sorted(fournisseurs), name="fournisseur"))
+    if lignes is not None:
+        par_fournisseur = lignes.groupby("supplier_id")
+        t["usines"] = par_fournisseur["plant"].agg(lambda p: ", ".join(sorted(p.unique())))
+        t["lignes"] = par_fournisseur.size()
+    else:
+        t["usines"], t["lignes"] = None, float("nan")
+    t["cout"] = (planning.groupby("supplier_id")["cout"].sum().round(2) if planning is not None
+                 else float("nan"))
+    t["distance_source"] = couts.distances_source
+    t["distance"] = couts.distance_brute
+    t["saisie_le"] = saisies["saisie_le"] if len(saisies) else None
+    t["statut"] = "manquante"
+    t.loc[t["distance_source"].notna(), "statut"] = "fichier source"
+    t.loc[t.index.isin(saisies.index), "statut"] = "saisie"
+    t.loc[~t.index.isin(couts.distances_source.index) & t["distance"].isna(), "statut"] = "absent du fichier"
+    t["a_completer"] = t["distance"].isna()
+    t = t.reset_index().sort_values(["a_completer", "lignes", "fournisseur"], ascending=[False, False, True])
+    return t.reset_index(drop=True)[
+        ["fournisseur", "usines", "lignes", "cout", "distance_source", "distance", "statut", "saisie_le"]]
+
+
+def enregistrer_mapping(table: pd.DataFrame) -> int:
+    """Enregistre les distances de la table de mapping qui diffèrent du fichier source.
+
+    Une distance vide ou égale à celle du fichier source n'est pas une saisie ; une saisie déjà enregistrée
+    garde sa date si sa distance n'a pas changé.
+
+    Args:
+        table: table de ``table_mapping``, colonne ``distance`` éventuellement modifiée.
+
+    Returns:
+        Le nombre de distances saisies enregistrées.
+
+    Raises:
+        ValueError: si une distance n'est pas un nombre strictement positif.
+    """
+    anciennes = couts.lire_distances_saisies().set_index("supplier_id")["distance"]
+    dates = couts.lire_distances_saisies().set_index("supplier_id")["saisie_le"]
+    distance = pd.to_numeric(table["distance"], errors="coerce")
+    saisie = distance.notna() & (distance != table["distance_source"])
+    maintenant = datetime.now().isoformat(timespec="minutes")
+    saisies = pd.DataFrame({"supplier_id": table.loc[saisie, "fournisseur"], "distance": distance[saisie]})
+    saisies["saisie_le"] = [dates[f] if f in anciennes.index and anciennes[f] == d else maintenant
+                            for f, d in zip(saisies["supplier_id"], saisies["distance"])]
+    couts.enregistrer_distances_saisies(saisies)
+    return len(saisies)
+
+
+def distances_completees() -> pd.DataFrame:
+    """Le fichier des distances complété par les saisies, au format de ``data/bronze/distances.csv``.
+
+    Returns:
+        Une ligne par fournisseur : ``supplier_id`` et ``distance`` (vide si toujours inconnue).
+    """
+    couts.charger_distances()
+    return couts.distance_brute.rename_axis("supplier_id").reset_index()
 
 
 def etapes_nettoyage(schedule: pd.DataFrame, r: Resultats) -> pd.DataFrame:
@@ -119,11 +246,12 @@ def etapes_nettoyage(schedule: pd.DataFrame, r: Resultats) -> pd.DataFrame:
         {"étape": "Quantité nulle", "lignes": -retirees_qte, "détail": "aucun besoin ce jour-là : retirées"},
         {"étape": "Date exclue ou illisible", "lignes": -retirees_date,
          "détail": f"dates exclues : {', '.join(DATES_EXCLUES)}"},
-        {"étape": "Quarantaine", "lignes": len(q), "détail": "lignes avec au moins un flag"},
+        {"étape": "Lignes signalées", "lignes": len(q),
+         "détail": "au moins un problème détecté ; gardées, sauf les lignes de plus de 24,5 t"},
         {"étape": "  dont sans poids", "lignes": sans_poids, "détail": "un camion réservé par ligne"},
         {"étape": "  dont sans volume", "lignes": sans_volume, "détail": "poids connu : un camion réservé par ligne"},
         {"étape": "  dont plus de 24,5 t", "lignes": exclues, "détail": "exclues, en attente du client"},
-        {"étape": "Lignes consolidées", "lignes": consolidees, "détail": "silver + quarantaine au poids connu"},
+        {"étape": "Lignes consolidées", "lignes": consolidees, "détail": "lignes saines + lignes signalées au poids connu"},
     ])
 
 
@@ -194,7 +322,7 @@ def toutes_metriques(schedule: pd.DataFrame, r: Resultats) -> Metriques:
         Toutes les métriques du run, par catégorie.
     """
     entree = profil_schedule(schedule)
-    entree["lignes en quarantaine"] = float(len(r.quarantaine))
+    entree["lignes signalées"] = float(len(r.quarantaine))
     resultats = metriques_moteur(r)
     _, _, semaines = periode(r)
     entree["semaines planifiées"] = float(semaines)

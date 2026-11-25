@@ -233,3 +233,5 @@ test_local/
 ~$Presentation_cours_projet_consolidation_livraisons.pptx
 # historique des runs du dashboard (local à chaque poste)
 data/historique/
+# distances complétées dans l'onglet Mapping du dashboard (local à chaque poste)
+data/mapping/

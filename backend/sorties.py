@@ -6,7 +6,7 @@ import pandas as pd
 
 from .charge import nb_hors_tolerance
 from .config import JOURS, POIDS_MAX, SORTIE
-from .couts import distance_brute
+from . import couts
 from . import donnees
 from .formatage import nombre, pourcent
 
@@ -101,7 +101,7 @@ def construire_sortie1(planning: pd.DataFrame) -> pd.DataFrame:
         "camions_semaine": camions_semaine.round(2),
         "remplissage_poids": (par_couple["poids"].mean() / POIDS_MAX).round(4),
     }).reset_index()
-    sortie1.insert(2, "distance_km", sortie1["supplier_id"].map(distance_brute))
+    sortie1.insert(2, "distance_km", sortie1["supplier_id"].map(couts.distance_brute))
     sortie1.insert(3, "livraisons_semaine_actuelles",
                    [round(livraisons_actuelles.get((p, s), 0), 2) for p, s in zip(sortie1["plant"], sortie1["supplier_id"])])
     sortie1 = sortie1.rename(columns={
@@ -192,7 +192,7 @@ def construire_sortie3(camions_base: pd.DataFrame, planning_complet: pd.DataFram
         sortie3[colonne] = sortie3[colonne].round(2)
     for colonne in ("camions_actuels", "camions_apres"):
         sortie3[colonne] = sortie3[colonne].astype(int)
-    sortie3.insert(2, "distance_km", sortie3["supplier_id"].map(distance_brute))
+    sortie3.insert(2, "distance_km", sortie3["supplier_id"].map(couts.distance_brute))
     sortie3 = sortie3.rename(columns={"supplier_id": "fournisseur", "plant": "usine"})[
         ["fournisseur", "usine", "distance_km", "camions_actuels", "cout_actuel", "camions_apres", "cout_apres",
          "economie", "economie_pct", "cout_actuel_semaine", "cout_apres_semaine"]]

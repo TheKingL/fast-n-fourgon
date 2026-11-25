@@ -44,7 +44,7 @@ Double-clic sur `lancer_dashboard.bat`, ou depuis la racine du dépôt :
 streamlit run frontend/app.py
 ```
 
-Deux pages :
+Trois pages :
 
 - **Analyse** : on choisit un schedule (celui du projet ou un CSV importé), on lance le moteur, on voit les
   résultats (coût, économie, camions, charge des usines, sorties 1, 2 et 3, contraintes) et l'écart avec le
@@ -52,7 +52,14 @@ Deux pages :
   par sortie) ou en CSV zippés (format Excel français ou format `data/gold`) ; « Enregistrer dans
   l'historique » garde le run ;
 - **Historique** : évolution des métriques run après run (avec un mode base 100), comparaison de deux runs,
-  journal, fichiers de chaque run.
+  journal, fichiers de chaque run ;
+- **Mapping** : table de correspondance fournisseur -> distance, pour compléter les distances manquantes (sinon
+  chiffrées au tarif « > 650 km »). Les saisies sont gardées dans `data/mapping/distances_saisies.csv` (local à
+  chaque poste, ignoré par git) sans modifier `data/bronze/distances.csv`, et le moteur les utilise à l'analyse
+  suivante (`main.py` compris) ; le fichier des distances complété peut être téléchargé.
+
+L'onglet Qualité des données liste aussi, fournisseur par fournisseur, les lignes sans poids ou sans volume
+(impossibles à consolider), pour savoir quels fournisseurs renseignent mal leurs envois.
 
 Le moteur tourne sur le schedule choisi : nettoyage (milestone 1), baseline (milestone 2), puis consolidation.
 Un CSV importé doit avoir les colonnes de `data/bronze/released_schedule.csv`. Le résultat d'un même fichier est

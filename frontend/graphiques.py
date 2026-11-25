@@ -330,7 +330,7 @@ def changements_par_usine(changements: pd.DataFrame) -> go.Figure:
 
 
 def lignes_par_flag(par_flag: pd.Series) -> go.Figure:
-    """Nombre de lignes en quarantaine par problème détecté (une ligne peut en avoir plusieurs).
+    """Nombre de lignes signalées par problème détecté (une ligne peut en avoir plusieurs).
 
     Args:
         par_flag: nom du flag -> nombre de lignes.
@@ -347,7 +347,7 @@ def lignes_par_flag(par_flag: pd.Series) -> go.Figure:
         hovertemplate="%{y}<br>%{x} lignes<extra></extra>"))
     fig.update_yaxes(autorange="reversed", showgrid=False)
     fig.update_xaxes(range=[0, par_flag.max() * 1.2])
-    return _mise_en_page(fig, "Lignes en quarantaine par problème", max(220, 46 * len(par_flag) + 90))
+    return _mise_en_page(fig, "Lignes signalées par problème", max(220, 46 * len(par_flag) + 90))
 
 
 def barres_runs(x: Sequence[str], series: dict[str, list[float]], titre: str, suffixe: str = "") -> go.Figure:
@@ -437,3 +437,39 @@ def savings_par_couple(sortie3: pd.DataFrame, nb: int = 15, par_semaine: bool = 
     fig.update_yaxes(showgrid=False)
     titre = titre or f"Coût de transport{' par semaine' if par_semaine else ''}, {len(s)} couples qui économisent le plus"
     return _mise_en_page(fig, titre, max(380, 62 * len(s) + 110))
+
+
+def qualite_fournisseurs(qualite: pd.DataFrame, nb: int = 15, par_taux: bool = False) -> go.Figure:
+    """Fournisseurs qui envoient le plus de lignes sans poids ou sans volume.
+
+    Args:
+        qualite: qualité par fournisseur (voir ``moteur.qualite_par_fournisseur``), fournisseurs fautifs.
+        nb: nombre de fournisseurs affichés.
+        par_taux: classer par part de lignes incomplètes (sinon par nombre de lignes manquantes).
+
+    Returns:
+        En nombre : barres horizontales groupées, poids manquants en orange et volumes manquants en violet.
+        En taux : une barre par fournisseur, la part de ses lignes qui sont incomplètes.
+    """
+    if par_taux:
+        q = qualite.sort_values(["taux_incomplet", "lignes_incompletes"], ascending=False).head(nb).iloc[::-1]
+        fig = go.Figure(go.Bar(
+            y=q["fournisseur"], x=q["taux_incomplet"] * 100, orientation="h", marker_color=ORANGE,
+            text=[f"{t * 100:.0f} %  ({n}/{l})" for t, n, l in zip(q["taux_incomplet"], q["lignes_incompletes"],
+                                                                     q["lignes"])],
+            textposition="outside", cliponaxis=False,
+            hovertemplate="%{y}<br>%{x:.1f} % de lignes incomplètes<extra></extra>"))
+        fig.update_xaxes(ticksuffix=" %", range=[0, 118])
+        titre = f"Part de lignes incomplètes, {len(q)} fournisseurs les plus touchés"
+    else:
+        q = qualite.head(nb).iloc[::-1]
+        fig = go.Figure([
+            go.Bar(name="Volume manquant", y=q["fournisseur"], x=q["volumes_manquants"], orientation="h",
+                   marker_color=VIOLET, hovertemplate="%{y}<br>%{x} lignes sans volume<extra></extra>"),
+            go.Bar(name="Poids manquant", y=q["fournisseur"], x=q["poids_manquants"], orientation="h",
+                   marker_color=ORANGE, hovertemplate="%{y}<br>%{x} lignes sans poids<extra></extra>"),
+        ])
+        fig.update_layout(barmode="group", bargroupgap=0.06, legend_traceorder="reversed")
+        titre = f"Lignes sans poids ou sans volume, {len(q)} fournisseurs les plus touchés"
+    fig.update_yaxes(showgrid=False)
+    return _mise_en_page(fig, titre, max(340, 30 * len(q) * (1 if par_taux else 1.6) + 110))

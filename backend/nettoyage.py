@@ -9,7 +9,7 @@
 import pandas as pd
 
 from .config import COLONNES_SCHEDULE, DATES_EXCLUES, POIDS_MAX, VOLUME_MAX
-from .couts import distance_brute
+from . import couts
 
 COLONNES_SILVER: list[str] = ["need_date", "supplier_id", "material", "plant", "unloading_point",
                               "schedule_quantity", "weight", "volume"]
@@ -38,7 +38,7 @@ def flags(schedule: pd.DataFrame) -> pd.DataFrame:
         Une colonne booléenne par flag : ``MISSING_WEIGHT``, ``MISSING_VOLUME``, ``NO_DISTANCE``,
         ``OVER_TRUCK_WEIGHT``, ``OVER_TRUCK_VOLUME``.
     """
-    avec_distance = set(distance_brute.index[distance_brute.notna()])
+    avec_distance = set(couts.distance_brute.index[couts.distance_brute.notna()])
     return pd.DataFrame({
         "MISSING_WEIGHT": schedule["weight"].isna(),
         "MISSING_VOLUME": schedule["volume"].isna(),
