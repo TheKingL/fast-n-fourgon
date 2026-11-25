@@ -1,4 +1,4 @@
-# Moteur de consolidation des livraisons
+# Fast-n-Fourgon : moteur de consolidation des livraisons
 
 Le moteur regroupe les livraisons de chaque couple fournisseur × usine dans le moins de camions possible :
 1 à 3 jours fixes de livraison par semaine (un couple à 2 ou 3 jours livre au moins une semaine sur tous ses jours ;
@@ -8,6 +8,8 @@ au plus 7 jours d'avance, et une charge équilibrée sur les jours de la semaine
 ## Installation
 
 ```powershell
+git clone git@github.com:TheKingL/fast-n-fourgon.git
+cd fast-n-fourgon
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
