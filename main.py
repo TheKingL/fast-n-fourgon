@@ -40,10 +40,10 @@ import pandas as pd
 from backend import config, donnees, sorties
 from backend.baseline import construire_baseline
 from backend.contraintes import alertes, valider
-from backend.nettoyage import nettoyer
 from backend.formatage import eur, nombre, pourcent
 from backend.jours_fixes import VARIANTES, Scenarios, algorithme_de_base
 from backend.lissage import lisser
+from backend.nettoyage import nettoyer
 from backend.report import ajouter_reserves, construire_planning, finaliser, reporter_lignes
 from backend.resultats import Resultats
 from backend.typage import Choix

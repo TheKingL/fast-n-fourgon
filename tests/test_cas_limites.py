@@ -4,9 +4,8 @@ Mêmes tests que la partie correspondante de data_analysis/milestone4.ipynb.
 """
 import numpy as np
 import pandas as pd
-import pytest
 
-from moteur import J, L, P, lignes_test, m
+from moteur import L, P, lignes_test, m
 
 q = m.quarantaine
 

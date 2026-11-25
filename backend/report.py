@@ -4,9 +4,9 @@ from typing import Any, TypedDict
 
 import pandas as pd
 
+from . import donnees
 from .config import JOURS, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion
-from . import donnees
 from .jours_fixes import Scenarios, nom_profil, profil_utilise
 from .typage import Choix, Profil
 
@@ -84,7 +84,7 @@ def reporter_lignes(camions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         plant, supplier = str(plant), str(supplier)
         profil: Profil = groupe["profil"].iloc[0]
 
-        def cout(ls: list[int]) -> float:
+        def cout(ls: list[int], supplier: str = supplier) -> float:
             """Prix d'un camion du couple qui transporte les lignes ``ls``."""
             return cout_camion(poids[ls].sum(), supplier)
 

@@ -11,10 +11,10 @@ from typing import NamedTuple
 
 import pandas as pd
 
+from . import donnees
 from .charge import charge_depuis_camions
 from .config import FENETRE, JOURS, JOURS_FIXES_MAX, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion
-from . import donnees
 from .typage import Charge, Choix, CleScenario, Profil
 
 PROFILS: list[Profil] = [p for n in range(1, JOURS_FIXES_MAX + 1) for p in itertools.combinations(range(5), n)]

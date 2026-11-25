@@ -4,10 +4,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from . import donnees
 from .charge import nb_hors_tolerance
 from .config import JOURS, POIDS_MAX, SORTIE
 from .couts import distance_brute
-from . import donnees
 from .formatage import nombre, pourcent
 
 NB_AFFICHES: int = 10

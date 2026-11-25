@@ -56,7 +56,7 @@ if contenu is None:
 empreinte = hashlib.sha1(contenu + str(separateur).encode()).hexdigest()
 try:
     schedule = moteur.lire_schedule(contenu, SEPARATEURS[str(separateur)])
-except Exception as erreur:  # fichier illisible : on l'explique au lieu de planter
+except Exception as erreur:  # noqa: BLE001 (fichier quelconque illisible : on l'explique au lieu de planter)
     hero("Analyse", "Fichier illisible", f"{source} : {erreur}")
     st.stop()
 manquantes = moteur.colonnes_manquantes(schedule)
@@ -213,10 +213,10 @@ with carte("export"):
         excel_fr = c_format.toggle("CSV pour Excel français", value=True, key="export_excel_fr",
                                    help="Séparateur « ; » et virgule décimale, lisibles directement par un Excel "
                                         "français. Désactivé : séparateur « , » et point décimal (format de data/gold).")
-        donnees_export = lambda: export.archive_csv(r, choix, excel_fr)  # noqa: E731  (généré au clic)
+        donnees_export = lambda: export.archive_csv(r, choix, excel_fr)  # généré au clic
         fichier_export, type_export = f"{nom_base}.zip", "application/zip"
     else:
-        donnees_export = lambda: export.classeur_excel(r, choix, source or "")  # noqa: E731
+        donnees_export = lambda: export.classeur_excel(r, choix, source or "")
         fichier_export = f"{nom_base}.xlsx"
         type_export = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     c_bouton.download_button("Télécharger", donnees_export, fichier_export, type_export, type="primary",

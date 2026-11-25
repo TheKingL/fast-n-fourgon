@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from moteur import J, L, P, lignes_test, m
+from moteur import J, lignes_test, m
 
 
 @pytest.mark.parametrize("valeur, tranches, attendu", [

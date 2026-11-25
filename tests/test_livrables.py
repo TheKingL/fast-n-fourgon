@@ -2,11 +2,9 @@
 
 Mêmes tests que la partie correspondante de data_analysis/milestone4.ipynb.
 """
-import numpy as np
 import pandas as pd
-import pytest
 
-from moteur import J, L, P, lignes_test, m
+from moteur import m
 
 SORTIE1 = m.SORTIE / "sortie1_profils.csv"
 SORTIE2 = m.SORTIE / "sortie2_camions.csv"

@@ -10,3 +10,6 @@ target-version = "py312"
 line-length = 120
 src = [".", "tests"]                  # tests/moteur.py : module local, importé par les fichiers de tests
 extend-exclude = ["data_analysis"]    # notebooks d'analyse des milestones : hors lint
+
+[tool.ruff.lint]
+ignore = ["UP040"]                    # backend/typage.py garde les alias « X: TypeAlias = ... » (PEP 613)

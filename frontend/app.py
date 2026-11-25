@@ -6,9 +6,9 @@ RACINE = Path(__file__).resolve().parent.parent
 if str(RACINE) not in sys.path:          # pour importer main.py, backend/ et frontend/
     sys.path.insert(0, str(RACINE))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from frontend.style import appliquer_style  # noqa: E402
+from frontend.style import appliquer_style
 
 st.set_page_config(page_title="Consolidation des livraisons", page_icon=":material/local_shipping:", layout="wide")
 appliquer_style()

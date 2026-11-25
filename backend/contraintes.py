@@ -9,10 +9,10 @@ from collections.abc import Callable
 import numpy as np
 import pandas as pd
 
+from . import donnees
 from .charge import charges_camions, ecart, hors_tolerance
 from .config import FENETRE, JOURS_FIXES_MAX, POIDS_MAX, VOLUME_MAX
 from .couts import cout_camion, cout_total
-from . import donnees
 from .jours_fixes import profil_utilise
 
 
