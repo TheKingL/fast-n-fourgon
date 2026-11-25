@@ -17,3 +17,4 @@ services:
 
 volumes:
   historique:
+    name: fast-n-fourgon-historique    # même volume que la commande docker run du README
