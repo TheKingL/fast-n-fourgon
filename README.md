@@ -1,4 +1,6 @@
-# Moteur de consolidation des livraisons
+# Fast-n-Fourgon : moteur de consolidation des livraisons
+
+[![CI](https://github.com/TheKingL/fast-n-fourgon/actions/workflows/ci.yml/badge.svg)](https://github.com/TheKingL/fast-n-fourgon/actions/workflows/ci.yml)
 
 Le moteur regroupe les livraisons de chaque couple fournisseur × usine dans le moins de camions possible :
 1 à 3 jours fixes de livraison par semaine (un couple à 2 ou 3 jours livre au moins une semaine sur tous ses jours ;
@@ -8,10 +10,16 @@ au plus 7 jours d'avance, et une charge équilibrée sur les jours de la semaine
 ## Installation
 
 ```powershell
+git clone git@github.com:TheKingL/fast-n-fourgon.git
+cd fast-n-fourgon
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+`requirements-dev.txt` installe l'application (`requirements.txt` : moteur et dashboard), plus les outils de tests, de
+lint et des notebooks. Pour seulement faire tourner l'application, `pip install -r requirements.txt` suffit : c'est ce
+qu'installent l'image Docker et `lancer_dashboard.bat`.
 
 ## Lancement
 
@@ -66,6 +74,70 @@ Un CSV importé doit avoir les colonnes de `data/bronze/released_schedule.csv`. 
 gardé en cache tant que le serveur tourne. Les runs sont gardés dans `data/historique/` (local à chaque poste,
 ignoré par git).
 
+## Docker
+
+Le dashboard tourne aussi dans un conteneur, sans installer Python : il suffit de Docker (Docker Desktop sous Windows et
+macOS). Le CI publie l'image sur `ghcr.io/thekingl/fast-n-fourgon` à chaque push sur `main`, pour PC (amd64) et Mac
+Apple Silicon (arm64).
+
+```bash
+docker run -d --name fast-n-fourgon -p 8501:8501 -v fast-n-fourgon-historique:/app/data/historique \n  -v fast-n-fourgon-mapping:/app/data/mapping ghcr.io/thekingl/fast-n-fourgon:latest
+```
+
+Le dashboard est alors sur <http://localhost:8501> ; `docker stop fast-n-fourgon` l'arrête, `docker start fast-n-fourgon`
+le relance. Depuis le dépôt, `docker compose up -d` fait la même chose (`docker compose up -d --build` pour construire
+l'image depuis les sources, `docker compose down` pour l'arrêter).
+
+- **Historique** : les runs enregistrés vont dans le volume `fast-n-fourgon-historique` (monté sur
+  `/app/data/historique`), qui survit à l'arrêt et à la suppression du conteneur.
+- **Mapping** : les distances saisies vont dans le volume `fast-n-fourgon-mapping` (monté sur `/app/data/mapping`).
+- **Exports** : « Exporter l'analyse » et les boutons « Télécharger » passent par le navigateur, comme en local.
+- **Moteur en ligne de commande** : les CSV de sortie arrivent dans le dossier monté sur `/app/data/gold` (ici
+  `sorties/`, à créer avant ; sous Linux, ajouter `--user "$(id -u):$(id -g)"` s'il n'appartient pas à l'uid 1000) :
+
+  ```bash
+  docker run --rm -v "${PWD}/sorties:/app/data/gold" ghcr.io/thekingl/fast-n-fourgon python main.py
+  docker run --rm -v "${PWD}/sorties:/app/data/gold" -v "${PWD}:/travail" ghcr.io/thekingl/fast-n-fourgon python main.py --schedule /travail/planning.csv
+  ```
+
+- **Sans accès à ghcr.io** : chaque [release](https://github.com/TheKingL/fast-n-fourgon/releases) contient l'image en
+  archive, à charger avec `docker load -i fast-n-fourgon-<version>-linux-amd64.tar.gz` (`arm64` pour un Mac Apple
+  Silicon), puis la commande `docker run` ci-dessus avec le tag `<version>` à la place de `latest`.
+
+L'image (`Dockerfile`) part de `python:3.12-slim` en deux étages : les dépendances de `requirements.txt` sont installées
+dans un venv allégé (sans pip, ni les tests embarqués des librairies, ni les modules de pyarrow inutilisés), puis
+copiées avec le code. Elle pèse environ 160 Mo à télécharger (555 Mo sur disque), tourne avec un utilisateur sans droits
+root (uid 1000) et à l'heure de Paris (`-e TZ=...` pour changer), et Docker surveille l'état du dashboard
+(`HEALTHCHECK`).
+
+## Tests et lint
+
+Depuis la racine du dépôt, avec `requirements-dev.txt` installé :
+
+```powershell
+pytest          # tests du moteur (dossier tests/), quelques secondes
+ruff check .    # lint du code Python (configuration dans pyproject.toml)
+```
+
+Les tests sont ceux du notebook `data_analysis/milestone4.ipynb` (lancés là-bas avec ipytest). Les notebooks ne sont
+pas lintés.
+
+## CI et releases
+
+Le workflow `.github/workflows/ci.yml` (GitHub Actions) tourne à chaque push sur `main` :
+
+1. **lint** : `ruff check .` et hadolint sur le `Dockerfile` ;
+2. **tests** : `pytest` ;
+3. **image** : construction de l'image, puis un smoke test avant toute publication. Le moteur tourne dans le conteneur,
+   `tests/smoke_image.py` déroule le dashboard (analyse du schedule du projet, exports, historique) et le serveur doit
+   répondre. L'image est ensuite publiée pour amd64 et arm64 sur
+   [ghcr.io/thekingl/fast-n-fourgon](https://github.com/TheKingL/fast-n-fourgon/pkgs/container/fast-n-fourgon), avec les
+   tags `latest`, `v1.0.<numéro du run>` et `sha-<commit>` ;
+4. **release** : une [release](https://github.com/TheKingL/fast-n-fourgon/releases) `v1.0.<numéro du run>` avec
+   l'image en archive pour chaque architecture (`docker load`) et leurs empreintes (`SHA256SUMS`).
+
+Sur une pull request vers `main`, seuls le lint et les tests tournent.
+
 ## Structure
 
 ```
@@ -99,6 +171,12 @@ frontend/          dashboard Streamlit
 lancer_dashboard.bat  lancement du dashboard
 data/              bronze (brut), silver (nettoyé), baseline, gold (sorties)
 data_analysis/     notebooks des milestones 1 à 4 (milestone4 = tests du moteur)
+tests/             les tests du milestone 4 (pytest) et le smoke test de l'image Docker (smoke_image.py)
+requirements.txt   dépendances de l'application ; requirements-dev.txt : tests, lint et notebooks en plus
+pyproject.toml     configuration de pytest et de ruff
+Dockerfile         image Docker du dashboard ; .dockerignore : ce qui entre dans l'image
+compose.yaml       lancement de l'image avec docker compose (port 8501, volume de l'historique)
+.github/           CI (workflows/ci.yml) et modèle des notes de release
 ```
 
 Toutes les fonctions sont typées et documentées : leur docstring décrit les paramètres et le résultat.

@@ -6,9 +6,7 @@ import contextlib
 import io
 import types
 
-import numpy as np
 import pandas as pd
-import pytest
 
 with contextlib.redirect_stdout(io.StringIO()):   # le moteur tourne une fois, sans rien afficher ni écrire
     import main

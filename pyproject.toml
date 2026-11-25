@@ -1,0 +1,15 @@
+# Configuration des outils du dépôt. Le projet n'est pas un paquet installable : les dépendances sont dans
+# requirements.txt (application) et requirements-dev.txt (développement).
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]                    # main.py, backend/ et frontend/ importables depuis tests/, sans « python -m »
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = [".", "tests"]                  # tests/moteur.py : module local, importé par les fichiers de tests
+extend-exclude = ["data_analysis"]    # notebooks d'analyse des milestones : hors lint
+
+[tool.ruff.lint]
+ignore = ["UP040"]                    # backend/typage.py garde les alias « X: TypeAlias = ... » (PEP 613)

@@ -26,9 +26,22 @@ Metriques = dict[str, dict[str, float]]
 _VERROU = threading.Lock()
 """Le backend garde ses données d'entrée en mémoire (module ``donnees``) : un seul calcul à la fois."""
 
-__all__ = ["COLONNES_SCHEDULE", "Metriques", "lire_schedule", "colonnes_manquantes", "profil_schedule",
-           "executer_moteur", "version_distances", "etapes_nettoyage", "qualite_par_fournisseur", "table_mapping",
-           "enregistrer_mapping", "distances_completees", "toutes_metriques", "aplatir"]
+__all__ = [
+    "COLONNES_SCHEDULE",
+    "Metriques",
+    "aplatir",
+    "colonnes_manquantes",
+    "distances_completees",
+    "enregistrer_mapping",
+    "etapes_nettoyage",
+    "executer_moteur",
+    "lire_schedule",
+    "profil_schedule",
+    "qualite_par_fournisseur",
+    "table_mapping",
+    "toutes_metriques",
+    "version_distances",
+]
 
 
 def lire_schedule(contenu: bytes, separateur: str = ",") -> pd.DataFrame:

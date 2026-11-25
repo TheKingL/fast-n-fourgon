@@ -7,8 +7,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from .config import MIN_CAMIONS_SEMAINE, SEUIL_LISSAGE
 from . import donnees
+from .config import MIN_CAMIONS_SEMAINE, SEUIL_LISSAGE
 from .typage import Charge, Charges
 
 

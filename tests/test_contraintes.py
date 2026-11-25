@@ -2,11 +2,10 @@
 
 Mêmes tests que la partie correspondante de data_analysis/milestone4.ipynb.
 """
-import numpy as np
 import pandas as pd
 import pytest
 
-from moteur import J, L, P, lignes_test, m
+from moteur import J, L, P, m
 
 FONCTIONS = {code_c: fonction for code_c, _, _, fonction in m.CONTRAINTES}
 DURES = [code_c for code_c, _, type_c, _ in m.CONTRAINTES if type_c == "dure"]

@@ -14,8 +14,21 @@ import streamlit as st
 
 from backend.config import JOURS, POIDS_MAX
 
-from .style import (AQUA, BLEU, BLEU_CLAIR, GRILLE, GRIS, JAUNE, ORANGE, RAMPE_BLEUE, ROUGE, TEXTE,
-                    TEXTE_SECONDAIRE, VERT, VIOLET)
+from .style import (
+    AQUA,
+    BLEU,
+    BLEU_CLAIR,
+    GRILLE,
+    GRIS,
+    JAUNE,
+    ORANGE,
+    RAMPE_BLEUE,
+    ROUGE,
+    TEXTE,
+    TEXTE_SECONDAIRE,
+    VERT,
+    VIOLET,
+)
 
 SERIES: Final[list[str]] = [BLEU, ORANGE, AQUA, JAUNE, "#E87BA4", "#008300", VIOLET, "#E34948"]
 """Couleurs des séries, toujours dans cet ordre (une série garde sa couleur quand on filtre)."""

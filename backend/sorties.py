@@ -4,10 +4,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from . import couts, donnees
 from .charge import nb_hors_tolerance
 from .config import JOURS, POIDS_MAX, SORTIE
-from . import couts
-from . import donnees
 from .formatage import nombre, pourcent
 
 NB_AFFICHES: int = 10

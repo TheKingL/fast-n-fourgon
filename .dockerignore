@@ -1,0 +1,17 @@
+# Contexte de build de l'image : uniquement ce dont l'application a besoin (liste blanche)
+*
+!requirements.txt
+!main.py
+!backend/
+!frontend/
+!data/
+!.streamlit/config.toml
+
+# Exclus même dans les dossiers autorisés
+data/historique/
+data/mapping/
+data/test/
+data/gold/test_planning/
+**/__pycache__/
+**/*.py[cod]
+**/.DS_Store

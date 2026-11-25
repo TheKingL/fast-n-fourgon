@@ -4,9 +4,8 @@ Mêmes tests que la partie correspondante de data_analysis/milestone4.ipynb.
 """
 import numpy as np
 import pandas as pd
-import pytest
 
-from moteur import J, L, P, lignes_test, m
+from moteur import L, P, m
 
 CLES = ["plant", "supplier_id", "material", "unloading_point"]
 entree = pd.concat([m.besoins, m.lignes_reserves])                          # planning d'entrée : besoins à livrer
