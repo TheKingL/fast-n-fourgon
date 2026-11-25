@@ -65,6 +65,41 @@ Un CSV importé doit avoir les colonnes de `data/bronze/released_schedule.csv`. 
 gardé en cache tant que le serveur tourne. Les runs sont gardés dans `data/historique/` (local à chaque poste,
 ignoré par git).
 
+## Docker
+
+Le dashboard tourne aussi dans un conteneur, sans installer Python : il suffit de Docker (Docker Desktop sous Windows et
+macOS). Le CI publie l'image sur `ghcr.io/thekingl/fast-n-fourgon` à chaque push sur `main`, pour PC (amd64) et Mac
+Apple Silicon (arm64).
+
+```bash
+docker run -d --name fast-n-fourgon -p 8501:8501 -v fast-n-fourgon-historique:/app/data/historique ghcr.io/thekingl/fast-n-fourgon:latest
+```
+
+Le dashboard est alors sur <http://localhost:8501> ; `docker stop fast-n-fourgon` l'arrête, `docker start fast-n-fourgon`
+le relance. Depuis le dépôt, `docker compose up -d` fait la même chose (`docker compose up -d --build` pour construire
+l'image depuis les sources, `docker compose down` pour l'arrêter).
+
+- **Historique** : les runs enregistrés vont dans le volume `fast-n-fourgon-historique` (monté sur
+  `/app/data/historique`), qui survit à l'arrêt et à la suppression du conteneur.
+- **Exports** : « Exporter l'analyse » et les boutons « Télécharger » passent par le navigateur, comme en local.
+- **Moteur en ligne de commande** : les CSV de sortie arrivent dans le dossier monté sur `/app/data/gold` (ici
+  `sorties/`, à créer avant ; sous Linux, ajouter `--user "$(id -u):$(id -g)"` s'il n'appartient pas à l'uid 1000) :
+
+  ```bash
+  docker run --rm -v "${PWD}/sorties:/app/data/gold" ghcr.io/thekingl/fast-n-fourgon python main.py
+  docker run --rm -v "${PWD}/sorties:/app/data/gold" -v "${PWD}:/travail" ghcr.io/thekingl/fast-n-fourgon python main.py --schedule /travail/planning.csv
+  ```
+
+- **Sans accès à ghcr.io** : chaque [release](https://github.com/TheKingL/fast-n-fourgon/releases) contient l'image en
+  archive, à charger avec `docker load -i fast-n-fourgon-<version>-linux-amd64.tar.gz` (`arm64` pour un Mac Apple
+  Silicon), puis la commande `docker run` ci-dessus avec le tag `<version>` à la place de `latest`.
+
+L'image (`Dockerfile`) part de `python:3.12-slim` en deux étages : les dépendances de `requirements.txt` sont installées
+dans un venv allégé (sans pip, ni les tests embarqués des librairies, ni les modules de pyarrow inutilisés), puis
+copiées avec le code. Elle pèse environ 160 Mo à télécharger (555 Mo sur disque), tourne avec un utilisateur sans droits
+root (uid 1000) et à l'heure de Paris (`-e TZ=...` pour changer), et Docker surveille l'état du dashboard
+(`HEALTHCHECK`).
+
 ## Tests et lint
 
 Depuis la racine du dépôt, avec `requirements-dev.txt` installé :
@@ -113,6 +148,8 @@ data_analysis/     notebooks des milestones 1 à 4 (milestone4 = tests du moteur
 tests/             les tests du milestone 4, pour pytest
 requirements.txt   dépendances de l'application ; requirements-dev.txt : tests, lint et notebooks en plus
 pyproject.toml     configuration de pytest et de ruff
+Dockerfile         image Docker du dashboard ; .dockerignore : ce qui entre dans l'image
+compose.yaml       lancement de l'image avec docker compose (port 8501, volume de l'historique)
 ```
 
 Toutes les fonctions sont typées et documentées : leur docstring décrit les paramètres et le résultat.

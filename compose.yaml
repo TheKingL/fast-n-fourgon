@@ -1,0 +1,19 @@
+# Dashboard en une commande, depuis la racine du dépôt :
+#   docker compose up -d            -> http://localhost:8501 (image publiée par le CI sur ghcr.io)
+#   docker compose up -d --build    -> image construite depuis les sources
+#   docker compose pull && docker compose up -d   -> passer à la dernière image publiée
+#   docker compose down             -> arrêt (l'historique reste dans le volume)
+name: fast-n-fourgon
+
+services:
+  dashboard:
+    image: ghcr.io/thekingl/fast-n-fourgon:latest
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - historique:/app/data/historique
+    restart: unless-stopped
+
+volumes:
+  historique:
